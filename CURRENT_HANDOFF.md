@@ -41,7 +41,7 @@
 - 모델 위치: `jetson_agent/best.pt`
 - 모델 클래스: `{0: fire, 1: smoke}`
 - SHA-256: `331E95833A3E7E865C8F7F846585561084F1159FB9443834A786AF2C22CB6FC8`
-- 최근 20프레임 중 10회 이상 감지 시 이벤트를 확정한다.
+- 기본 3초간 지속 감지 시 이벤트를 확정하고 0.6초의 순간 누락을 허용한다.
 - 서버 연결이 끊긴 동안 확정 이벤트를 대기 큐에 보관한다.
 - `jetson_agent/diagnose.py`가 CUDA, 카메라, 모델, HTTP, Edge WebSocket 토큰 인증을 검사한다.
 
@@ -109,8 +109,9 @@ CAMERA_SOURCE=0
 MODEL_PATH=best.pt
 CONFIDENCE=0.45
 TARGET_FPS=8
-WINDOW_SIZE=20
-MIN_DETECTIONS=10
+CONFIRM_SECONDS=3.0
+MISS_TOLERANCE_SECONDS=0.6
+CLEAR_SECONDS=2.0
 ```
 
 ## 5. 실제 연결 순서

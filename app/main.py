@@ -15,11 +15,13 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from app.database import backend_name, connect, init_db
+from app.notifications import send_telegram_alert, telegram_configured
 
 
 ROOT = Path(__file__).resolve().parent.parent
 STATIC = ROOT / "static"
 VIDEO_DIR = ROOT / "video"
+SNAPSHOT_DIR = ROOT / "data" / "snapshots"
 
 CAMERAS = [
     {"id": "CAM-01", "floor": "B1", "zone": "충전구역 A", "charger": "A-01~A-04", "x": 21.5, "y": 26},
@@ -109,11 +111,59 @@ async def register_detection(req: DetectionRequest) -> dict:
                 ),
             )
             event_id = cursor.lastrowid
-        event = {**camera, "id": event_id, "event_type": req.event_type, "source": req.source, "detected_at": now}
+        snapshot_path = None
+        frame = latest_frames.get(camera["id"])
+        if frame:
+            SNAPSHOT_DIR.mkdir(parents=True, exist_ok=True)
+            snapshot_path = SNAPSHOT_DIR / f"event_{event_id}_{camera['id']}.jpg"
+            snapshot_path.write_bytes(frame)
+            with connect() as con:
+                con.execute("UPDATE events SET snapshot_path=? WHERE id=?", (snapshot_path.name, event_id))
+        event = {
+            "id": event_id,
+            "camera_id": camera["id"],
+            "floor": camera["floor"],
+            "zone": camera["zone"],
+            "charger": camera["charger"],
+            "event_type": req.event_type,
+            "confidence": req.confidence,
+            "source": req.source,
+            "detected_at": now,
+            "resolved_at": None,
+            "resolution_note": None,
+            "snapshot_path": snapshot_path.name if snapshot_path else None,
+            "snapshot_url": f"/api/events/{event_id}/snapshot" if snapshot_path else None,
+            "notification_status": "pending" if telegram_configured() else "disabled",
+            "notification_error": None,
+            "notified_at": None,
+        }
+        with connect() as con:
+            con.execute(
+                "UPDATE events SET notification_status=? WHERE id=?",
+                (event["notification_status"], event_id),
+            )
 
     payload = {"kind": "detection", "camera": camera, "event": event}
     await manager.broadcast(payload)
+    if event:
+        asyncio.create_task(deliver_notification(dict(event), snapshot_path))
     return payload
+
+
+async def deliver_notification(event: dict, snapshot_path: Path | None) -> None:
+    result = await asyncio.to_thread(send_telegram_alert, event, snapshot_path)
+    with connect() as con:
+        con.execute(
+            "UPDATE events SET notification_status=?, notification_error=?, notified_at=? WHERE id=?",
+            (result.status, result.error, result.notified_at, event["id"]),
+        )
+    await manager.broadcast(
+        {
+            "kind": "notification-updated",
+            "event_id": event["id"],
+            "notification_status": result.status,
+        }
+    )
 
 
 async def simulator() -> None:
@@ -173,20 +223,47 @@ async def events(limit: int = 100):
         rows = con.execute(
             "SELECT * FROM events ORDER BY detected_at DESC LIMIT ?", (min(max(limit, 1), 500),)
         ).fetchall()
-    return [dict(row) for row in rows]
+    result = []
+    for row in rows:
+        event = dict(row)
+        event["snapshot_url"] = f"/api/events/{event['id']}/snapshot" if event.get("snapshot_path") else None
+        result.append(event)
+    return result
+
+
+@app.get("/api/events/{event_id}/snapshot")
+async def event_snapshot(event_id: int):
+    with connect() as con:
+        event = con.execute("SELECT snapshot_path FROM events WHERE id=?", (event_id,)).fetchone()
+    if not event or not event["snapshot_path"]:
+        raise HTTPException(status_code=404, detail="저장된 스냅샷이 없습니다.")
+    snapshot = (SNAPSHOT_DIR / event["snapshot_path"]).resolve()
+    if SNAPSHOT_DIR.resolve() not in snapshot.parents or not snapshot.is_file():
+        raise HTTPException(status_code=404, detail="스냅샷 파일이 없습니다.")
+    return FileResponse(snapshot, media_type="image/jpeg", filename=snapshot.name)
 
 
 @app.delete("/api/events")
 async def delete_events():
     with connect() as con:
+        snapshots = [row["snapshot_path"] for row in con.execute("SELECT snapshot_path FROM events WHERE snapshot_path IS NOT NULL").fetchall()]
         count = con.execute("SELECT COUNT(*) AS count FROM events").fetchone()["count"]
         con.execute("DELETE FROM events")
+    for filename in snapshots:
+        snapshot = (SNAPSHOT_DIR / filename).resolve()
+        if SNAPSHOT_DIR.resolve() in snapshot.parents and snapshot.is_file():
+            snapshot.unlink()
     now = utc_now()
     for camera in camera_state.values():
         camera.update(status="normal", confidence=0.0, updated_at=now)
     payload = {"kind": "events-cleared", "deleted": count, "cameras": list(camera_state.values())}
     await manager.broadcast(payload)
     return payload
+
+
+@app.get("/api/notifications/status")
+async def notification_status():
+    return {"telegram_configured": telegram_configured()}
 
 
 @app.put("/api/events/{event_id}/resolve")

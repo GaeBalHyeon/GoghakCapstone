@@ -88,7 +88,11 @@ def init_db() -> None:
                     source VARCHAR(50) NOT NULL,
                     detected_at VARCHAR(40) NOT NULL,
                     resolved_at VARCHAR(40) NULL,
-                    resolution_note VARCHAR(255) NULL
+                    resolution_note VARCHAR(255) NULL,
+                    snapshot_path VARCHAR(255) NULL,
+                    notification_status VARCHAR(20) NULL,
+                    notification_error TEXT NULL,
+                    notified_at VARCHAR(40) NULL
                 );
                 CREATE TABLE IF NOT EXISTS settings (
                     id INT PRIMARY KEY,
@@ -100,6 +104,14 @@ def init_db() -> None:
             con.execute(
                 "INSERT IGNORE INTO settings(id, simulation_enabled, auto_event_interval) VALUES (1, 0, 45)"
             )
+            for name, definition in (
+                ("snapshot_path", "VARCHAR(255) NULL"),
+                ("notification_status", "VARCHAR(20) NULL"),
+                ("notification_error", "TEXT NULL"),
+                ("notified_at", "VARCHAR(40) NULL"),
+            ):
+                if not con.execute("SHOW COLUMNS FROM events LIKE ?", (name,)).fetchone():
+                    con.execute(f"ALTER TABLE events ADD COLUMN {name} {definition}")
         else:
             con.executescript(
                 """
@@ -114,7 +126,11 @@ def init_db() -> None:
                     source TEXT NOT NULL,
                     detected_at TEXT NOT NULL,
                     resolved_at TEXT,
-                    resolution_note TEXT
+                    resolution_note TEXT,
+                    snapshot_path TEXT,
+                    notification_status TEXT,
+                    notification_error TEXT,
+                    notified_at TEXT
                 );
                 CREATE TABLE IF NOT EXISTS settings (
                     id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -125,6 +141,10 @@ def init_db() -> None:
                 VALUES (1, 0, 45);
                 """
             )
+            existing = {row["name"] for row in con.execute("PRAGMA table_info(events)").fetchall()}
+            for name in ("snapshot_path", "notification_status", "notification_error", "notified_at"):
+                if name not in existing:
+                    con.execute(f"ALTER TABLE events ADD COLUMN {name} TEXT")
 
 
 def backend_name() -> str:

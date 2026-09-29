@@ -2,6 +2,7 @@ const state = { cameras: [], events: [], settings: { simulation_enabled: false }
 const $ = (id) => document.getElementById(id);
 
 const labels = { fire: "화재", smoke: "연기", normal: "정상" };
+const notificationLabels = { pending: "전송 중", sent: "전송 완료", failed: "전송 실패", disabled: "사용 안 함" };
 const api = async (url, options = {}) => {
   const res = await fetch(url, { headers: { "Content-Type": "application/json" }, ...options });
   if (!res.ok) throw new Error(await res.text());
@@ -75,10 +76,25 @@ function closeCameraModal() {
 function renderEvents() {
   $("event-count").textContent = state.events.filter(e => new Date(e.detected_at).toDateString() === new Date().toDateString()).length;
   $("event-table").innerHTML = state.events.length ? state.events.map(e => `
-    <tr><td>${new Date(e.detected_at).toLocaleString("ko-KR")}</td><td>${e.camera_id}</td><td>${e.floor} ${e.zone}</td>
+    <tr><td>${e.snapshot_url ? `<button class="snapshot-button" onclick="openSnapshot(${e.id})" aria-label="${e.camera_id} 감지 스냅샷 확대"><img src="${e.snapshot_url}" alt="${e.camera_id} 감지 스냅샷"></button>` : '<span class="snapshot-empty">없음</span>'}</td>
+    <td>${new Date(e.detected_at).toLocaleString("ko-KR")}</td><td>${e.camera_id}</td><td>${e.floor} ${e.zone}</td>
     <td><span class="status ${e.event_type}">${labels[e.event_type]}</span></td><td>${Math.round(e.confidence * 100)}%</td>
-    <td>${e.resolved_at ? "확인 완료" : "발생 중"}</td><td>${e.resolved_at ? "" : `<button onclick="resolveEvent(${e.id})">확인·해제</button>`}</td></tr>`).join("") : `<tr><td colspan="7" class="empty">저장된 감지 이벤트가 없습니다.</td></tr>`;
+    <td><span class="notification-state ${e.notification_status || "disabled"}">${notificationLabels[e.notification_status] || "대기"}</span></td>
+    <td>${e.resolved_at ? "확인 완료" : "발생 중"}</td><td>${e.resolved_at ? "" : `<button onclick="resolveEvent(${e.id})">확인·해제</button>`}</td></tr>`).join("") : `<tr><td colspan="9" class="empty">저장된 감지 이벤트가 없습니다.</td></tr>`;
 }
+
+function openSnapshot(id) {
+  const event = state.events.find(item => item.id === id);
+  if (!event?.snapshot_url) return;
+  $("modal-camera-title").textContent = `${event.camera_id} · ${labels[event.event_type]} 스냅샷`;
+  $("modal-camera-description").textContent = new Date(event.detected_at).toLocaleString("ko-KR");
+  $("modal-camera-source").textContent = `${event.floor} · ${event.zone} · 신뢰도 ${Math.round(event.confidence * 100)}%`;
+  $("modal-camera-status").className = `status ${event.event_type}`;
+  $("modal-camera-status").textContent = labels[event.event_type];
+  $("camera-modal-feed").innerHTML = `<img src="${event.snapshot_url}" alt="${event.camera_id} 감지 스냅샷 확대">`;
+  $("camera-modal").showModal();
+}
+window.openSnapshot = openSnapshot;
 
 function showAlarm(camera, event) {
   if (!event) return;
@@ -126,7 +142,7 @@ function connectWs() {
   const protocol = location.protocol === "https:" ? "wss" : "ws";
   const ws = new WebSocket(`${protocol}://${location.host}/ws`);
   ws.onopen = () => { $("connection").className = "connection online"; $("connection").innerHTML = "<span></span> 실시간 연결"; ws.send("ready"); };
-  ws.onmessage = async (message) => { const data = JSON.parse(message.data); if (["detection", "resolved", "events-cleared", "edge-status"].includes(data.kind)) { await load(); if (data.event) showAlarm(data.camera, data.event); } };
+  ws.onmessage = async (message) => { const data = JSON.parse(message.data); if (["detection", "resolved", "events-cleared", "edge-status", "notification-updated"].includes(data.kind)) { await load(); if (data.event) showAlarm(data.camera, data.event); } };
   ws.onclose = () => { $("connection").className = "connection offline"; $("connection").innerHTML = "<span></span> 재연결 중"; setTimeout(connectWs, 2000); };
 }
 

@@ -14,8 +14,9 @@ os.environ.setdefault("CAMERA_SOURCE", "1")
 os.environ.setdefault("MODEL_PATH", str(Path(__file__).with_name("best.pt")))
 os.environ.setdefault("CONFIDENCE", "0.40")
 os.environ.setdefault("TARGET_FPS", "8")
-os.environ.setdefault("WINDOW_SIZE", "20")
-os.environ.setdefault("MIN_DETECTIONS", "10")
+os.environ.setdefault("CONFIRM_SECONDS", "3.0")
+os.environ.setdefault("MISS_TOLERANCE_SECONDS", "0.6")
+os.environ.setdefault("CLEAR_SECONDS", "2.0")
 
 sys.path.insert(0, str(AGENT_DIR))
 from agent import main  # noqa: E402

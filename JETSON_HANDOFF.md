@@ -100,8 +100,9 @@ CAMERA_SOURCE=0
 MODEL_PATH=best.pt
 CONFIDENCE=0.45
 TARGET_FPS=8
-WINDOW_SIZE=20
-MIN_DETECTIONS=10
+CONFIRM_SECONDS=3.0
+MISS_TOLERANCE_SECONDS=0.6
+CLEAR_SECONDS=2.0
 ```
 
 USB 카메라는 `CAMERA_SOURCE=0`, RTSP 카메라는 `CAMERA_SOURCE=rtsp://...`를 사용합니다.
@@ -137,7 +138,7 @@ ws://WINDOWS_IP:8000/ws/edge/CAM-01?token=EDGE_TOKEN
 - 홈페이지 영상: `http://WINDOWS_IP:8000/api/video_feed/CAM-01`
 - 감지 이벤트: Windows MySQL의 `events` 테이블에 `source=jetson-yolo`로 저장
 
-화재와 연기는 기본적으로 최근 20프레임 중 10프레임 이상 검출됐을 때 확정됩니다.
+화재와 연기는 기본적으로 3초간 지속 검출됐을 때 확정됩니다. 0.6초 이하의 순간 누락은 허용하며 2초간 검출이 없으면 정상 복귀합니다.
 
 ## 실제 장비 검증 순서
 

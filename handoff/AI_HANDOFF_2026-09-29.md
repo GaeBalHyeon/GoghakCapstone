@@ -39,7 +39,7 @@ EV Fire Guard: 전기차 주차장 화재·연기 관제. Jetson이 USB 카메�
   - `venv/` : 전용 가상환경
   - `run_agent.sh` / `stop_agent.sh` / `agent.log`
   - `install_env.sh`, `fix_torch.sh` 및 로그 : 설치 때 쓴 스크립트
-- Jetson `.env` 값: `WINDOWS_SERVER=192.168.0.223:8000`, `EDGE_TOKEN`=Windows `.env`와 동일, `CAMERA_ID=CAM-01`, `CAMERA_SOURCE=0`, `MODEL_PATH=best.pt`, `CONFIDENCE=0.45`, `TARGET_FPS=8`, `WINDOW_SIZE=20`, `MIN_DETECTIONS=10`
+- Jetson `.env` 값: `WINDOWS_SERVER=192.168.0.223:8000`, `EDGE_TOKEN`=Windows `.env`와 동일, `CAMERA_ID=CAM-01`, `CAMERA_SOURCE=0`, `MODEL_PATH=best.pt`, `CONFIDENCE=0.45`, `TARGET_FPS=8`, `CONFIRM_SECONDS=3.0`, `MISS_TOLERANCE_SECONDS=0.6`, `CLEAR_SECONDS=2.0`
 - 홈 폴더에 예전 `capstone.service`(disabled, inactive)와 cloudflared 흔적이 있다. 현재 구조와 무관하니 건드리지 않았다.
 
 ## 4. 이번 세션에서 한 일
@@ -71,7 +71,7 @@ EV Fire Guard: 전기차 주차장 화재·연기 관제. Jetson이 USB 카메�
 
 ## 6. 남은 작업 (우선순위 순)
 
-1. 실제 화재·연기 이벤트 저장 확인: 카메라에 화재 영상(휴대폰 등)을 비추고 20프레임 중 10회 이상 감지되면 이벤트가 MySQL `events`에 `source=jetson-yolo`로 저장되는지 `/api/events`로 확인한다. 아직 검증하지 않았다.
+1. 실제 화재·연기 이벤트 저장 확인: 카메라에 안전한 테스트 영상을 비추고 3초간 지속 감지되면 이벤트가 MySQL `events`에 `source=jetson-yolo`로 저장되는지 `/api/events`와 스냅샷으로 확인한다. 아직 실제 화재 장면 검증은 하지 않았다.
 2. Jetson 재부팅 시 자동 실행: 현재는 수동 실행(`setsid nohup`)이라 재부팅하면 꺼진다. systemd user 서비스(`systemctl --user` + `loginctl enable-linger`, 후자는 sudo 필요) 또는 사용자에게 sudo 비밀번호 입력을 요청해 system 서비스로 등록한다.
 3. `EDGE_TOKEN` 로그 노출: uvicorn 접근 로그에 `/ws/edge/CAM-01?token=...`이 그대로 찍힌다. 토큰을 헤더로 옮기거나 로그에서 마스킹하는 개선을 검토한다(서버 `app/main.py`의 `edge_websocket`, 에이전트 `connect_websocket` 양쪽 수정 필요).
 4. `setup_jetson.sh` 갱신: 현재 스크립트는 시스템 PyTorch를 전제로 해서 이 Jetson에서는 실패한다. 이번에 쓴 venv 방식(jp6/cu126 인덱스)으로 바꾸면 재설치가 쉬워진다.

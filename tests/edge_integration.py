@@ -32,6 +32,11 @@ def get_json(path: str):
         return json.load(response)
 
 
+def get_bytes(path: str):
+    with urllib.request.urlopen(HTTP + path, timeout=4) as response:
+        return response.status, response.headers.get_content_type(), response.read()
+
+
 def read_video_range(path: str):
     request = urllib.request.Request(HTTP + path, headers={"Range": "bytes=0-1023"})
     with urllib.request.urlopen(request, timeout=4) as response:
@@ -40,7 +45,11 @@ def read_video_range(path: str):
 
 def delete_test_event(event_id: int):
     with connect() as con:
+        event = con.execute("SELECT snapshot_path FROM events WHERE id=?", (event_id,)).fetchone()
         con.execute("DELETE FROM events WHERE id=?", (event_id,))
+    if event and event["snapshot_path"]:
+        snapshot = ROOT / "data" / "snapshots" / event["snapshot_path"]
+        snapshot.unlink(missing_ok=True)
 
 
 async def main():
@@ -69,6 +78,10 @@ async def main():
             events = await asyncio.to_thread(get_json, "/api/events")
             test_event = next(event for event in events if event["source"] == "jetson-yolo" and event["event_type"] == "fire")
             event_id = test_event["id"]
+            assert test_event["snapshot_url"]
+            status, content_type, snapshot = await asyncio.to_thread(get_bytes, test_event["snapshot_url"])
+            assert status == 200 and content_type == "image/jpeg" and snapshot == JPEG
+            assert test_event["notification_status"] in {"disabled", "pending", "sent"}
             await socket.send(json.dumps({"kind": "detection", "event_type": "normal", "confidence": 0.0, "fps": 7.8}))
             await asyncio.sleep(0.1)
         await asyncio.sleep(0.2)
@@ -76,7 +89,7 @@ async def main():
         camera = next(item for item in cameras if item["id"] == "CAM-01")
         assert camera["edge_online"] is False
         assert camera["status"] == "normal"
-        print("Jetson live feed, local video feeds, event persistence, and disconnect checks passed.")
+        print("Live feed, snapshot persistence, local videos, notification state, and disconnect checks passed.")
     finally:
         if event_id is not None:
             delete_test_event(event_id)
