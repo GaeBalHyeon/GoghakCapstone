@@ -58,6 +58,9 @@ PPT는 기존 건물 안전 관제 시스템을 전기차 주차장에 특화한
 - MySQL 관리자 비밀번호를 숨김 입력으로 받아 DB, 계정, 테이블, `.env`, 랜덤 Edge 토큰을 생성하는 `configure_windows.bat` 추가
 - 기존 `.env` 자동 백업과 `.env.backup` Git 제외 처리
 - MySQL insert/select/delete를 확인하고 테스트 행을 정리하는 `tests/mysql_integration.py` 추가
+- 홈페이지 상단 운영 상태를 Jetson 연결, 시뮬레이션, 연결 대기 상태에 맞춰 동적으로 표시
+- Windows `.env`, MySQL, 서버 포트, 모델, 영상, LAN 주소를 점검하는 `diagnose_windows.bat` 추가
+- Windows 진단에서 실행 중인 FastAPI가 실제 MySQL 모드인지 `/api/health`로 검증하도록 보완
 
 ## 4. 장비가 없는 환경에서의 처리
 

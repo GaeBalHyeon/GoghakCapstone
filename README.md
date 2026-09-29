@@ -30,8 +30,11 @@ GitHub에 현재 변경 내용을 업로드할 때는 `push.bat`을 실행합니
 setup.bat
 configure_windows.bat
 .venv\Scripts\python.exe tests\mysql_integration.py
+diagnose_windows.bat
 run.bat
 ```
+
+`diagnose_windows.bat`은 `.env`, MySQL 서비스와 로그인, 서버 포트, YOLO 모델, 테스트 영상, LAN 주소를 한 번에 점검합니다.
 
 ## 구현 기능
 

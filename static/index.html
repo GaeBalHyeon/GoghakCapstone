@@ -20,7 +20,7 @@
     <main>
       <section id="alarm" class="alarm hidden" role="alert"><span class="alarm-symbol">!</span><div><strong id="alarm-title">화재 감지</strong><p id="alarm-text"></p></div><button id="alarm-close" class="quiet-button">경보 닫기</button></section>
       <section id="overview" class="status-strip" aria-label="관제 요약">
-        <div class="status-primary"><span class="live-indicator"></span><div><strong>시스템 정상 운영 중</strong><p>4개 카메라의 상태를 실시간으로 확인합니다.</p></div></div>
+        <div class="status-primary"><span id="system-indicator" class="live-indicator waiting"></span><div><strong id="system-title">Jetson 연결 대기</strong><p id="system-description">카메라 에이전트가 연결되면 실시간 분석을 시작합니다.</p></div></div>
         <dl><div><dt>관제 카메라</dt><dd id="camera-count">4</dd></div><div><dt>활성 화재</dt><dd id="fire-count">0</dd></div><div><dt>연기 의심</dt><dd id="smoke-count">0</dd></div><div><dt>오늘 이벤트</dt><dd id="event-count">0</dd></div></dl>
       </section>
       <section class="section-heading"><div><p class="overline">LIVE OVERVIEW</p><h2>지하 1층 현황</h2></div><p>카메라 위치를 선택하면 테스트 대상을 변경할 수 있습니다.</p></section>

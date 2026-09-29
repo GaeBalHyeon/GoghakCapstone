@@ -1,4 +1,4 @@
-const state = { cameras: [], events: [] };
+const state = { cameras: [], events: [], settings: { simulation_enabled: false } };
 const $ = (id) => document.getElementById(id);
 
 const labels = { fire: "화재", smoke: "연기", normal: "정상" };
@@ -12,6 +12,21 @@ function renderCameras() {
   $("camera-count").textContent = state.cameras.length;
   $("fire-count").textContent = state.cameras.filter(c => c.status === "fire").length;
   $("smoke-count").textContent = state.cameras.filter(c => c.status === "smoke").length;
+  const connected = state.cameras.filter(c => c.edge_online).length;
+  const indicator = $("system-indicator");
+  if (connected) {
+    $("system-title").textContent = "Jetson 실시간 분석 중";
+    $("system-description").textContent = `${connected}개 카메라가 YOLO 분석 영상을 전송하고 있습니다.`;
+    indicator.className = "live-indicator online";
+  } else if (state.settings.simulation_enabled) {
+    $("system-title").textContent = "시뮬레이션 모드";
+    $("system-description").textContent = "실제 Jetson 연결 없이 테스트 이벤트를 생성합니다.";
+    indicator.className = "live-indicator simulation";
+  } else {
+    $("system-title").textContent = "Jetson 연결 대기";
+    $("system-description").textContent = "카메라 에이전트가 연결되면 실시간 분석을 시작합니다.";
+    indicator.className = "live-indicator waiting";
+  }
   $("camera-grid").innerHTML = state.cameras.map(c => `
     <article class="camera-card ${c.status}">
       <div class="camera-feed ${c.edge_online ? "live" : "simulated"}">${c.edge_online ? `<img src="/api/video_feed/${c.id}" alt="${c.id} 실시간 YOLO 영상">` : ""}</div>
@@ -57,8 +72,8 @@ function beep() {
 
 async function load() {
   [state.cameras, state.events] = await Promise.all([api("/api/cameras"), api("/api/events")]);
-  const settings = await api("/api/settings");
-  $("auto-sim").checked = settings.simulation_enabled; $("interval").value = settings.auto_event_interval;
+  state.settings = await api("/api/settings");
+  $("auto-sim").checked = state.settings.simulation_enabled; $("interval").value = state.settings.auto_event_interval;
   $("camera-select").innerHTML = state.cameras.map(c => `<option value="${c.id}">${c.id} · ${c.zone}</option>`).join("");
   renderCameras(); renderEvents();
 }
