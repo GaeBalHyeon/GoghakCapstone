@@ -41,10 +41,16 @@ def _caption(event: dict) -> str:
             f"위치: {html.escape(str(event['floor']))} {html.escape(str(event['zone']))}",
             f"신뢰도: {float(event['confidence']) * 100:.1f}%",
             f"감지 시각: {html.escape(str(event['detected_at']))}",
+            "스냅샷: 별도 메시지로 전송 중",
             "",
             f'<a href="{html.escape(dashboard, quote=True)}">관제 페이지 열기</a>',
         ]
     )
+
+
+def _photo_caption(event: dict) -> str:
+    event_label = "화재" if event["event_type"] == "fire" else "연기"
+    return f"{event_label} 감지 스냅샷 · {event['camera_id']} · {event['floor']} {event['zone']}"
 
 
 def _post_form(url: str, fields: dict[str, str]) -> None:
@@ -103,23 +109,15 @@ def send_telegram_alert(event: dict, snapshot_path: Path | None) -> Notification
     retry_delays = (2, 5, 10, 20)
     last_error = "Telegram 전송 실패"
 
+    notified_at = None
     for attempt in range(1, max_attempts + 1):
         try:
-            if snapshot_path and snapshot_path.is_file():
-                _post_photo(
-                    f"{base_url}/sendPhoto",
-                    {"chat_id": chat_id, "caption": caption, "parse_mode": "HTML"},
-                    snapshot_path,
-                )
-            else:
-                _post_form(
-                    f"{base_url}/sendMessage",
-                    {"chat_id": chat_id, "text": caption, "parse_mode": "HTML"},
-                )
-            return NotificationResult(
-                status="sent",
-                notified_at=datetime.now().astimezone().isoformat(timespec="seconds"),
+            _post_form(
+                f"{base_url}/sendMessage",
+                {"chat_id": chat_id, "text": caption, "parse_mode": "HTML"},
             )
+            notified_at = datetime.now().astimezone().isoformat(timespec="seconds")
+            break
         except urllib.error.HTTPError as error:
             last_error = f"Telegram HTTP {error.code} ({attempt}/{max_attempts})"
             retryable = error.code == 429 or error.code >= 500
@@ -131,7 +129,33 @@ def send_telegram_alert(event: dict, snapshot_path: Path | None) -> Notification
             retryable = False
 
         if not retryable or attempt >= max_attempts:
-            break
+            return NotificationResult(status="failed", error=last_error)
         time.sleep(retry_delays[min(attempt - 1, len(retry_delays) - 1)])
 
-    return NotificationResult(status="failed", error=last_error)
+    if snapshot_path and snapshot_path.is_file():
+        photo_error = None
+        for attempt in range(1, 3):
+            try:
+                _post_photo(
+                    f"{base_url}/sendPhoto",
+                    {"chat_id": chat_id, "caption": _photo_caption(event)},
+                    snapshot_path,
+                )
+                photo_error = None
+                break
+            except urllib.error.HTTPError as error:
+                photo_error = f"snapshot HTTP {error.code} ({attempt}/2)"
+                retryable = error.code == 429 or error.code >= 500
+            except (urllib.error.URLError, TimeoutError) as error:
+                photo_error = f"snapshot connection error: {type(error).__name__} ({attempt}/2)"
+                retryable = True
+            except Exception as error:
+                photo_error = f"snapshot error: {type(error).__name__} ({attempt}/2)"
+                retryable = False
+            if not retryable or attempt >= 2:
+                break
+            time.sleep(1)
+        if photo_error:
+            return NotificationResult(status="sent", error=photo_error, notified_at=notified_at)
+
+    return NotificationResult(status="sent", notified_at=notified_at)

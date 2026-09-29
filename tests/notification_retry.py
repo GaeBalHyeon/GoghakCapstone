@@ -4,6 +4,7 @@ import os
 import sys
 import urllib.error
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -49,7 +50,21 @@ def run() -> None:
         assert post.call_count == 1
         sleep.assert_not_called()
 
-    print("Telegram retry and non-retryable error checks passed.")
+    calls = []
+    with NamedTemporaryFile(suffix=".jpg") as snapshot:
+        snapshot.write(b"jpeg")
+        snapshot.flush()
+        with patch.dict(os.environ, environment, clear=False), patch(
+            "app.notifications._post_form", side_effect=lambda *_args, **_kwargs: calls.append("text")
+        ), patch(
+            "app.notifications._post_photo", side_effect=lambda *_args, **_kwargs: calls.append("photo")
+        ):
+            result = send_telegram_alert(EVENT, Path(snapshot.name))
+            assert result.status == "sent"
+            assert result.notified_at
+            assert calls == ["text", "photo"]
+
+    print("Telegram text-first delivery, retry, and non-retryable error checks passed.")
 
 
 if __name__ == "__main__":
