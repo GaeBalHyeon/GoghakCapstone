@@ -58,6 +58,8 @@ Jetson:      curl http://192.168.50.10:8000/api/health
 
 Windows 방화벽에서는 개인 네트워크의 TCP 8000 포트만 허용합니다. 외부 인터넷에 8000 포트를 개방할 필요는 없습니다.
 
+현재 확인 당시 Windows PC의 유선 LAN 주소는 `192.168.1.138`, 게이트웨이는 `192.168.1.1`이었습니다. DHCP 주소는 바뀔 수 있으므로 실제 연결 직전에 `network_check.bat`으로 다시 확인하고 공유기에서 DHCP 예약을 설정합니다.
+
 ## Windows 설정
 
 `.env.example`을 `.env`로 복사하고 MySQL 및 Edge 토큰을 설정합니다.
@@ -66,8 +68,12 @@ Windows 방화벽에서는 개인 네트워크의 TCP 8000 포트만 허용합�
 copy .env.example .env
 notepad .env
 setup.bat
+setup_mysql.bat
+allow_firewall_8000.bat
 run.bat
 ```
+
+`allow_firewall_8000.bat`은 관리자 권한 CMD에서 한 번만 실행합니다. `run.bat`은 외부 장비 접속이 가능하도록 `0.0.0.0:8000`에서 서버를 엽니다.
 
 MySQL 관리자 계정으로 `mysql_setup.sql`을 한 번 실행합니다. SQL 파일과 `.env`의 비밀번호는 동일하게 변경합니다.
 

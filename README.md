@@ -22,6 +22,10 @@ GitHub에 현재 변경 내용을 업로드할 때는 `push.bat`을 실행합니
 
 브라우저에서 <http://127.0.0.1:8000>에 접속합니다. API 문서는 <http://127.0.0.1:8000/docs>에서 확인할 수 있습니다.
 
+서버는 `0.0.0.0:8000`에 바인딩되므로 같은 공유기의 Jetson에서도 접속할 수 있습니다. `network_check.bat`으로 Windows 내부 IP를 확인하고, 관리자 CMD에서 `allow_firewall_8000.bat`을 한 번 실행해 개인 네트워크 TCP 8000을 허용합니다.
+
+이 PC에는 MySQL 8.0 서비스가 설치되어 실행 중입니다. `.env.example`을 `.env`로 복사하고 비밀번호를 정한 뒤 `mysql_setup.sql`에도 같은 비밀번호를 입력하고 `setup_mysql.bat`을 실행합니다.
+
 ## 구현 기능
 
 - 지하 1층 도면에 4개 카메라 위치와 상태 표시
@@ -59,7 +63,10 @@ re_capstone/
 ├─ data/                실행 시 SQLite DB 생성
 ├─ requirements.txt
 ├─ setup.bat
+├─ setup_mysql.bat
 ├─ run.bat
+├─ network_check.bat
+├─ allow_firewall_8000.bat
 ├─ setup.ps1
 ├─ run.ps1
 ├─ JETSON_HANDOFF.md
