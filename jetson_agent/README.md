@@ -5,7 +5,7 @@ Jetson에 연결된 카메라 영상을 YOLO로 분석한 뒤, 박스가 그려�
 ## 준비
 
 1. 이 폴더를 Jetson으로 복사합니다.
-2. 학습 모델 `best.pt`를 이 폴더에 둡니다.
+2. 저장소에 포함된 `best.pt`를 사용합니다. 모델 클래스는 `fire`, `smoke`로 확인했습니다.
 3. `.env.example`을 `.env`로 복사합니다.
 4. `WINDOWS_SERVER`에 Windows PC의 내부 IP와 포트 8000을 입력합니다.
 5. Windows 프로젝트의 `.env`와 같은 `EDGE_TOKEN`을 입력합니다.
@@ -16,6 +16,8 @@ python3 agent.py
 ```
 
 USB 카메라는 `CAMERA_SOURCE=0`, RTSP 카메라는 `CAMERA_SOURCE=rtsp://...` 형식으로 설정합니다. 모델 클래스 이름에는 `fire` 또는 `smoke`가 포함되어야 합니다.
+
+영상 파일로 먼저 시험하려면 `CAMERA_SOURCE=../video/1.mp4`처럼 설정할 수 있으며 영상 끝에 도달하면 처음부터 반복합니다.
 
 화재·연기는 기본적으로 최근 20프레임 중 10프레임 이상 감지됐을 때 한 번의 확정 이벤트로 전송합니다.
 

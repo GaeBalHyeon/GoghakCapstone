@@ -53,6 +53,7 @@ def main():
 
     histories = {"fire": deque(maxlen=WINDOW_SIZE), "smoke": deque(maxlen=WINDOW_SIZE)}
     active = {"fire": False, "smoke": False}
+    pending_events = []
     ws = None
     frame_interval = 1.0 / max(TARGET_FPS, 1)
     last_sent = 0.0
@@ -64,6 +65,8 @@ def main():
         while True:
             ok, frame = capture.read()
             if not ok:
+                if isinstance(camera_source(), str) and Path(camera_source()).is_file():
+                    capture.set(cv2.CAP_PROP_POS_FRAMES, 0)
                 time.sleep(0.2)
                 continue
 
@@ -86,11 +89,10 @@ def main():
                 confirmed = len(histories[kind]) == WINDOW_SIZE and sum(histories[kind]) >= MIN_DETECTIONS
                 if confirmed and not active[kind]:
                     active[kind] = True
-                    if ws:
-                        ws.send(json.dumps({
-                            "kind": "detection", "event_type": kind,
-                            "confidence": seen[kind], "fps": measured_fps,
-                        }))
+                    pending_events.append({
+                        "kind": "detection", "event_type": kind,
+                        "confidence": seen[kind], "fps": measured_fps,
+                    })
                 elif not confirmed and active[kind] and sum(histories[kind]) == 0:
                     active[kind] = False
 
@@ -107,6 +109,9 @@ def main():
             try:
                 if ws is None or not ws.connected:
                     ws = connect_websocket()
+                while pending_events:
+                    ws.send(json.dumps(pending_events[0]))
+                    pending_events.pop(0)
                 ws.send_binary(jpeg.tobytes())
                 if int(now) % 5 == 0:
                     ws.send(json.dumps({"kind": "heartbeat", "fps": measured_fps}))

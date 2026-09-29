@@ -105,7 +105,14 @@ USB 카메라는 `CAMERA_SOURCE=0`, RTSP 카메라는 `CAMERA_SOURCE=rtsp://...`
 
 ## 모델 확인
 
-모델 클래스에 `fire` 또는 `smoke`가 있어야 현재 에이전트가 이벤트로 분류합니다.
+원본 프로젝트의 `best.pt`를 `jetson_agent/best.pt`로 포함했습니다. 모델을 실행하지 않고 PyTorch 아카이브 메타데이터를 검사한 결과 클래스는 `{0: fire, 1: smoke}`입니다.
+
+```text
+파일 크기: 19,167,642 bytes
+SHA-256: 331E95833A3E7E865C8F7F846585561084F1159FB9443834A786AF2C22CB6FC8
+```
+
+모델 클래스에 `fire` 또는 `smoke`가 있어야 현재 에이전트가 이벤트로 분류합니다. Jetson에서 로드한 뒤에도 아래 명령으로 확인합니다.
 
 ```bash
 python3 -c "from ultralytics import YOLO; print(YOLO('best.pt').names)"
