@@ -1,5 +1,7 @@
 # 현재 작업 인수인계
 
+> 최신 전체 인수인계와 시연 절차는 루트의 `PROJECT_HANDOFF.md`를 우선해서 확인합니다. 이 문서는 초기 구현 과정의 상세 참고 기록입니다.
+
 작성일: 2026-09-29  
 저장소: `https://github.com/GaeBalHyeon/GoghakCapstone`
 
