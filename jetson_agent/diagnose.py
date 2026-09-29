@@ -80,10 +80,14 @@ def main():
         try:
             import websocket
 
-            ws_url = f"ws://{server}/ws/edge/{quote(camera_id)}?token={quote(token)}"
-            ws = websocket.create_connection(ws_url, timeout=4)
+            ws_url = f"ws://{server}/ws/edge/{quote(camera_id)}"
+            ws = websocket.create_connection(
+                ws_url,
+                timeout=4,
+                header=[f"Authorization: Bearer {token}"],
+            )
             ws.close()
-            checks.append(result("Edge WebSocket", True, ws_url.split("?", 1)[0]))
+            checks.append(result("Edge WebSocket", True, ws_url))
         except Exception as error:
             checks.append(result("Edge WebSocket", False, repr(error)))
 

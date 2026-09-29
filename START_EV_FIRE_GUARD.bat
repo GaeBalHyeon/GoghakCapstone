@@ -42,7 +42,8 @@ if not "%PREPARE_RESULT%"=="0" (
     exit /b %PREPARE_RESULT%
 )
 
-for /f "delims=" %%I in ('".venv\Scripts\python.exe" "tools\prepare_launch.py" --print-url') do set "DASHBOARD_URL=%%I"
+set /p DASHBOARD_URL=<"data\launch_url.txt"
+if not defined DASHBOARD_URL set "DASHBOARD_URL=http://127.0.0.1:8000"
 
 echo.
 echo [READY] Windows server and Telegram configuration loaded.
@@ -54,7 +55,7 @@ echo Press Ctrl+C to stop the Windows server.
 echo.
 
 start "" /b powershell -NoProfile -WindowStyle Hidden -Command "Start-Sleep -Seconds 3; Start-Process '%DASHBOARD_URL%'"
-".venv\Scripts\python.exe" -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+".venv\Scripts\python.exe" -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --no-access-log
 
 echo.
 echo EV Fire Guard server stopped.

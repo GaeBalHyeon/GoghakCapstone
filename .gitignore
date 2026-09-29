@@ -2,6 +2,8 @@
 __pycache__/
 *.pyc
 data/*.db
+data/*.log
+data/launch_url.txt
 .env
 .env.backup
 snapshots/

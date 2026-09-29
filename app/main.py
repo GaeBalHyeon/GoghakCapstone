@@ -359,7 +359,10 @@ async def edge_websocket(websocket: WebSocket, camera_id: str):
         await websocket.close(code=4404, reason="Unknown camera")
         return
     expected_token = os.getenv("EDGE_TOKEN", "")
-    if expected_token and websocket.query_params.get("token") != expected_token:
+    authorization = websocket.headers.get("authorization", "")
+    header_token = authorization.removeprefix("Bearer ") if authorization.startswith("Bearer ") else ""
+    supplied_token = header_token or websocket.query_params.get("token", "")
+    if expected_token and supplied_token != expected_token:
         await websocket.close(code=4401, reason="Invalid edge token")
         return
 

@@ -52,8 +52,13 @@ def drain_incoming(ws):
 
 
 def connect_websocket():
-    url = f"ws://{SERVER}/ws/edge/{quote(CAMERA_ID)}?token={quote(TOKEN)}"
-    ws = websocket.create_connection(url, timeout=10, enable_multithread=True)
+    url = f"ws://{SERVER}/ws/edge/{quote(CAMERA_ID)}"
+    ws = websocket.create_connection(
+        url,
+        timeout=10,
+        enable_multithread=True,
+        header=[f"Authorization: Bearer {TOKEN}"],
+    )
     ws.settimeout(None)
     threading.Thread(target=drain_incoming, args=(ws,), daemon=True).start()
     return ws

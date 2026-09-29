@@ -15,6 +15,6 @@ echo Jetson URL: http://WINDOWS_LAN_IP:8000
 echo Press Ctrl+C to stop the server.
 echo.
 
-".venv\Scripts\python.exe" -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+".venv\Scripts\python.exe" -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --no-access-log
 endlocal
 

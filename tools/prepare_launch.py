@@ -7,6 +7,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 ENV_PATH = ROOT / ".env"
+LAUNCH_URL_PATH = ROOT / "data" / "launch_url.txt"
 
 
 def current_lan_ip() -> str:
@@ -52,6 +53,8 @@ def port_is_open() -> bool:
 def main() -> int:
     ip = current_lan_ip()
     dashboard = f"http://{ip}:8000"
+    LAUNCH_URL_PATH.parent.mkdir(exist_ok=True)
+    LAUNCH_URL_PATH.write_text(dashboard + "\n", encoding="utf-8")
     if "--print-url" in sys.argv:
         print(dashboard)
         return 0
