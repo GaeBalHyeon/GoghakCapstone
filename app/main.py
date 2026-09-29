@@ -36,6 +36,7 @@ camera_state = {
 }
 latest_frames: dict[str, bytes] = {}
 frame_versions: dict[str, int] = {}
+edge_connections: dict[str, int] = {}
 
 
 class DetectionRequest(BaseModel):
@@ -324,6 +325,7 @@ async def edge_websocket(websocket: WebSocket, camera_id: str):
         return
 
     await websocket.accept()
+    edge_connections[camera_id] = edge_connections.get(camera_id, 0) + 1
     camera["edge_online"] = True
     camera["updated_at"] = utc_now()
     await manager.broadcast({"kind": "edge-status", "camera": camera})
@@ -352,8 +354,10 @@ async def edge_websocket(websocket: WebSocket, camera_id: str):
     except (WebSocketDisconnect, json.JSONDecodeError, KeyError, ValueError):
         pass
     finally:
-        camera["edge_online"] = False
-        camera["fps"] = 0.0
+        edge_connections[camera_id] = max(edge_connections.get(camera_id, 1) - 1, 0)
+        camera["edge_online"] = edge_connections[camera_id] > 0
+        if not camera["edge_online"]:
+            camera["fps"] = 0.0
         await manager.broadcast({"kind": "edge-status", "camera": camera})
 
 
