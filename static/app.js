@@ -1,4 +1,4 @@
-const state = { cameras: [], events: [], localVideos: [], settings: { simulation_enabled: false } };
+const state = { cameras: [], events: [], settings: { simulation_enabled: false } };
 const $ = (id) => document.getElementById(id);
 
 const labels = { fire: "화재", smoke: "연기", normal: "정상" };
@@ -29,9 +29,9 @@ function renderCameras() {
   }
   $("camera-grid").innerHTML = state.cameras.map(c => `
     <article class="camera-card ${c.status}">
-      <div class="camera-feed ${c.edge_online ? "live" : "offline"}">${c.edge_online ? `<img src="/api/video_feed/${c.id}" alt="${c.id} 실시간 YOLO 영상">` : ""}</div>
+      <div class="camera-feed ${c.edge_online ? "live" : c.local_video ? "local-live" : "offline"}">${c.edge_online ? `<img src="/api/video_feed/${c.id}" alt="${c.id} Jetson 실시간 YOLO 영상">` : c.local_video ? `<video src="${c.local_video}" autoplay muted loop playsinline preload="auto" aria-label="${c.id} Windows 관제 영상"></video>` : ""}</div>
       <div class="camera-info"><div><strong>${c.id}</strong><span class="status ${c.status}">${labels[c.status]}</span></div>
-      <p>${c.floor} · ${c.zone} · ${c.edge_online ? `Jetson 연결 · ${c.fps.toFixed(1)} fps` : "Jetson 카메라 오프라인"}</p></div>
+      <p>${c.floor} · ${c.zone} · ${c.edge_online ? `Jetson YOLO · ${c.fps.toFixed(1)} fps` : c.local_video ? "Windows 로컬 관제 영상" : "Jetson 카메라 오프라인"}</p></div>
     </article>`).join("");
 
   document.querySelectorAll(".camera-marker").forEach(e => e.remove());
@@ -43,40 +43,6 @@ function renderCameras() {
     marker.onclick = () => { $("camera-select").value = c.id; };
     $("floor-map").appendChild(marker);
   });
-}
-
-function formatBytes(bytes) {
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
-}
-
-function selectLocalVideo(video, button) {
-  const player = $("local-video-player");
-  if (player.getAttribute("src") !== video.url) {
-    player.src = video.url;
-    player.load();
-  }
-  $("local-video-title").textContent = video.name;
-  $("local-video-size").textContent = formatBytes(video.size);
-  document.querySelectorAll(".recording-item").forEach(item => item.classList.remove("active"));
-  if (button) button.classList.add("active");
-}
-
-function renderLocalVideos() {
-  $("local-video-count").textContent = `${state.localVideos.length}개`;
-  const list = $("local-video-list");
-  if (!state.localVideos.length) {
-    list.innerHTML = '<p class="recording-empty">video 폴더에 MP4 파일이 없습니다.</p>';
-    return;
-  }
-  list.innerHTML = state.localVideos.map((video, index) => `
-    <button class="recording-item${index === 0 ? " active" : ""}" data-video-index="${index}">
-      <span><strong>${video.name}</strong><small>Windows 로컬 영상</small></span><em>${formatBytes(video.size)}</em>
-    </button>`).join("");
-  list.querySelectorAll("[data-video-index]").forEach(button => {
-    button.onclick = () => selectLocalVideo(state.localVideos[Number(button.dataset.videoIndex)], button);
-  });
-  selectLocalVideo(state.localVideos[0], list.querySelector(".recording-item"));
 }
 
 function renderEvents() {
@@ -105,11 +71,11 @@ function beep() {
 }
 
 async function load() {
-  [state.cameras, state.events, state.localVideos] = await Promise.all([api("/api/cameras"), api("/api/events"), api("/api/local-videos")]);
+  [state.cameras, state.events] = await Promise.all([api("/api/cameras"), api("/api/events")]);
   state.settings = await api("/api/settings");
   $("auto-sim").checked = state.settings.simulation_enabled; $("interval").value = state.settings.auto_event_interval;
   $("camera-select").innerHTML = state.cameras.map(c => `<option value="${c.id}">${c.id} · ${c.zone}</option>`).join("");
-  renderCameras(); renderEvents(); renderLocalVideos();
+  renderCameras(); renderEvents();
 }
 
 async function trigger(eventType) {

@@ -23,9 +23,9 @@ VIDEO_DIR = ROOT / "video"
 
 CAMERAS = [
     {"id": "CAM-01", "floor": "B1", "zone": "충전구역 A", "charger": "A-01~A-04", "x": 20, "y": 31},
-    {"id": "CAM-02", "floor": "B1", "zone": "충전구역 B", "charger": "B-01~B-04", "x": 69, "y": 31},
-    {"id": "CAM-03", "floor": "B1", "zone": "일반 주차구역", "charger": "-", "x": 20, "y": 71},
-    {"id": "CAM-04", "floor": "B1", "zone": "출입구", "charger": "-", "x": 69, "y": 71},
+    {"id": "CAM-02", "floor": "B1", "zone": "충전구역 B", "charger": "B-01~B-04", "x": 69, "y": 31, "local_video": "/videos/1.mp4"},
+    {"id": "CAM-03", "floor": "B1", "zone": "일반 주차구역", "charger": "-", "x": 20, "y": 71, "local_video": "/videos/2.mp4"},
+    {"id": "CAM-04", "floor": "B1", "zone": "출입구", "charger": "-", "x": 69, "y": 71, "local_video": "/videos/3.mp4"},
 ]
 
 camera_state = {
@@ -160,15 +160,6 @@ async def health():
 @app.get("/api/cameras")
 async def cameras():
     return list(camera_state.values())
-
-
-@app.get("/api/local-videos")
-async def local_videos():
-    videos = sorted(VIDEO_DIR.glob("*.mp4"), key=lambda path: path.name.lower())
-    return [
-        {"name": path.name, "url": f"/videos/{path.name}", "size": path.stat().st_size}
-        for path in videos
-    ]
 
 
 @app.post("/api/detections")

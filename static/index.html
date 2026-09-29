@@ -11,7 +11,6 @@
     <nav aria-label="주 메뉴">
       <a class="nav-item active" href="#overview"><span class="nav-icon">⌂</span>관제 현황</a>
       <a class="nav-item" href="#cameras"><span class="nav-icon">▣</span>카메라</a>
-      <a class="nav-item" href="#recordings"><span class="nav-icon">▶</span>저장 영상</a>
       <a class="nav-item" href="#events"><span class="nav-icon">≡</span>이벤트 기록</a>
     </nav>
     <div class="sidebar-foot"><span class="environment-dot"></span><div><strong>로컬 환경</strong><small>장비 시뮬레이션</small></div></div>
@@ -40,8 +39,7 @@
           <button id="save-settings" class="primary-button">설정 저장</button>
         </aside>
       </section>
-      <section id="cameras" class="content-section"><div class="section-heading compact"><div><p class="overline">JETSON LIVE</p><h2>실시간 YOLO 카메라</h2></div><p>Jetson에 연결된 카메라의 화재·연기 분석 영상입니다.</p></div><div id="camera-grid" class="camera-grid"></div></section>
-      <section id="recordings" class="content-section"><div class="section-heading compact"><div><p class="overline">WINDOWS ARCHIVE</p><h2>Windows 저장 영상</h2></div><p>Windows PC의 video 폴더에서 직접 재생합니다. Jetson 카메라와 별도입니다.</p></div><div class="recording-workspace surface"><div class="recording-player"><video id="local-video-player" controls preload="metadata"><p>이 브라우저는 MP4 재생을 지원하지 않습니다.</p></video><div class="recording-meta"><strong id="local-video-title">저장 영상을 선택하세요</strong><span id="local-video-size"></span></div></div><div class="recording-list"><div class="recording-list-head"><strong>영상 목록</strong><small id="local-video-count">0개</small></div><div id="local-video-list"></div></div></div></section>
+      <section id="cameras" class="content-section"><div class="section-heading compact"><div><p class="overline">LIVE MONITORING</p><h2>실시간 카메라 관제</h2></div><p>CAM-01은 Jetson YOLO 실시간 영상, 나머지는 Windows 영상 기반 관제 화면입니다.</p></div><div id="camera-grid" class="camera-grid"></div></section>
       <section id="events" class="content-section surface log-surface"><div class="surface-head"><div><h3>감지 이벤트</h3><p>발생 순서와 관리자 확인 상태</p></div><div class="table-actions"><button id="refresh" class="quiet-button">새로고침</button><button id="delete-events" class="danger-button">기록 삭제</button></div></div><div class="table-wrap"><table><thead><tr><th>감지 시각</th><th>카메라</th><th>구역</th><th>유형</th><th>신뢰도</th><th>상태</th><th></th></tr></thead><tbody id="event-table"></tbody></table></div></section>
     </main>
   </div>
