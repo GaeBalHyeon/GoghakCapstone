@@ -165,9 +165,11 @@ ws://WINDOWS_IP:8000/ws/edge/CAM-01?token=EDGE_TOKEN
 - `video/1.mp4`: 1274×720, 24 FPS, 544프레임, 약 22.7초
 - `video/2.mp4`: 1280×720, 약 15 FPS, 640프레임, 약 42.5초
 - `video/3.mp4`: 626×360, 24 FPS, 544프레임, 약 22.7초
-- Windows 격리 환경의 CPU PyTorch는 `c10.dll` 초기화 오류로 모델 실행에 실패했습니다.
-- 모델 클래스는 아카이브 메타데이터로 별도 확인했으며 `{0: fire, 1: smoke}`입니다.
-- 최종 추론 검증은 Jetson의 CUDA PyTorch 환경에서 수행해야 합니다.
+- 최초 CPU PyTorch 빌드는 `c10.dll` 초기화 오류가 발생했지만 공식 `torch 2.5.1+cpu`로 교체한 뒤 모델 로드와 추론에 성공했습니다.
+- 세 영상 모두에서 화재 또는 연기 박스가 검출됐습니다. 자세한 결과는 `MODEL_EVALUATION.md`를 확인합니다.
+- `video/3.mp4`로 YOLO → WebSocket → Windows MJPEG → DB 이벤트 경로를 종단 간 검증했습니다.
+- Windows CPU 측정 추론 속도는 약 13.6 FPS였으며 화재 이벤트가 `source=jetson-yolo`로 저장됐습니다.
+- 최종 카메라와 CUDA 성능은 Jetson에서 검증해야 합니다.
 
 검증하지 않은 항목을 작동 완료로 기록하지 않습니다.
 

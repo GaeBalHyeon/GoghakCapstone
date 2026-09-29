@@ -49,6 +49,12 @@ PPT는 기존 건물 안전 관제 시스템을 전기차 주차장에 특화한
 - Windows CPU PyTorch의 `c10.dll` 초기화 오류를 확인해 실제 추론 검증 대상을 Jetson CUDA 환경으로 구분
 - JetPack의 CUDA PyTorch와 OpenCV를 보존하는 `setup_jetson.sh` 추가
 - CUDA, 카메라, 모델 클래스, Windows 서버 연결을 점검하는 `jetson_agent/diagnose.py` 추가
+- 공식 CPU PyTorch 2.5.1로 모델 로드 및 테스트 영상 3개 실제 추론 성공
+- 1초 간격 표본 평가에서 세 영상 모두 화재 또는 연기 검출 확인
+- `video/3.mp4`를 사용해 YOLO 추론, JPEG WebSocket 전송, MJPEG 중계, 화재 이벤트 저장을 종단 간 검증
+- 검증 시 Windows CPU에서 약 13.6 FPS, 화재 신뢰도 약 0.7499 확인
+- 에이전트 종료 후 카메라 오프라인 전환과 테스트 이벤트 정리 확인
+- 상세 결과를 `MODEL_EVALUATION.md`에 기록
 
 ## 4. 장비가 없는 환경에서의 처리
 

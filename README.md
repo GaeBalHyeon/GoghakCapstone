@@ -52,6 +52,8 @@ GitHub에 현재 변경 내용을 업로드할 때는 `push.bat`을 실행합니
 
 Jetson 연결 구조와 실제 장비 작업 절차는 `JETSON_HANDOFF.md`를 확인합니다. Jetson은 YOLO 추론 영상과 이벤트를 WebSocket으로 Windows에 전송하고, Windows는 홈페이지 영상 중계와 MySQL 저장을 담당합니다. mmWave 센서는 화재 탐지의 주 센서가 아니라 재실자 확인이나 대피 보조 데이터로 결합할 수 있습니다.
 
+모델의 Windows CPU 영상 평가와 종단 간 전송 검증 결과는 `MODEL_EVALUATION.md`에 기록되어 있습니다.
+
 ## 폴더 구성
 
 ```text
