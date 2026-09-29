@@ -10,7 +10,7 @@
     <a class="brand" href="#"><span class="brand-mark">E</span><span><strong>EV Fire Guard</strong><small>Local control</small></span></a>
     <nav aria-label="주 메뉴">
       <a class="nav-item active" href="#overview"><span class="nav-icon">⌂</span>관제 현황</a>
-      <a class="nav-item" href="#cameras"><span class="nav-icon">▣</span>카메라</a>
+      <a class="nav-item" href="#floor-map"><span class="nav-icon">▣</span>카메라</a>
       <a class="nav-item" href="#events"><span class="nav-icon">≡</span>이벤트 기록</a>
     </nav>
     <div class="sidebar-foot"><span class="environment-dot"></span><div><strong>로컬 환경</strong><small>장비 시뮬레이션</small></div></div>
@@ -39,7 +39,6 @@
           <button id="save-settings" class="primary-button">설정 저장</button>
         </aside>
       </section>
-      <section id="cameras" class="content-section"><div class="section-heading compact"><div><p class="overline">LIVE MONITORING</p><h2>실시간 카메라 관제</h2></div><p>CAM-01은 Jetson YOLO 실시간 영상, 나머지는 Windows 영상 기반 관제 화면입니다.</p></div><div id="camera-grid" class="camera-grid"></div></section>
       <section id="events" class="content-section surface log-surface"><div class="surface-head"><div><h3>감지 이벤트</h3><p>발생 순서와 관리자 확인 상태</p></div><div class="table-actions"><button id="refresh" class="quiet-button">새로고침</button><button id="delete-events" class="danger-button">기록 삭제</button></div></div><div class="table-wrap"><table><thead><tr><th>감지 시각</th><th>카메라</th><th>구역</th><th>유형</th><th>신뢰도</th><th>상태</th><th></th></tr></thead><tbody id="event-table"></tbody></table></div></section>
     </main>
   </div>

@@ -27,19 +27,18 @@ function renderCameras() {
     $("system-description").textContent = "카메라 에이전트가 연결되면 실시간 분석을 시작합니다.";
     indicator.className = "live-indicator waiting";
   }
-  $("camera-grid").innerHTML = state.cameras.map(c => `
-    <article class="camera-card ${c.status}">
-      <div class="camera-feed ${c.edge_online ? "live" : c.local_video ? "local-live" : "offline"}">${c.edge_online ? `<img src="/api/video_feed/${c.id}" alt="${c.id} Jetson 실시간 YOLO 영상">` : c.local_video ? `<video src="${c.local_video}" autoplay muted loop playsinline preload="auto" aria-label="${c.id} Windows 관제 영상"></video>` : ""}</div>
-      <div class="camera-info"><div><strong>${c.id}</strong><span class="status ${c.status}">${labels[c.status]}</span></div>
-      <p>${c.floor} · ${c.zone} · ${c.edge_online ? `Jetson YOLO · ${c.fps.toFixed(1)} fps` : c.local_video ? "Windows 로컬 관제 영상" : "Jetson 카메라 오프라인"}</p></div>
-    </article>`).join("");
-
   document.querySelectorAll(".camera-marker").forEach(e => e.remove());
   state.cameras.forEach(c => {
-    const marker = document.createElement("button");
+    const marker = document.createElement("article");
     marker.className = `camera-marker ${c.status}`;
     marker.style.left = `${c.x}%`; marker.style.top = `${c.y}%`;
-    marker.textContent = `${c.id} · ${labels[c.status]}`;
+    const feedClass = c.edge_online ? "live" : c.local_video ? "local-live" : "offline";
+    const media = c.edge_online
+      ? `<img src="/api/video_feed/${c.id}" alt="${c.id} Jetson 실시간 YOLO 영상">`
+      : c.local_video
+        ? `<video src="${c.local_video}" autoplay muted loop playsinline preload="auto" aria-label="${c.id} Windows 관제 영상"></video>`
+        : '<span class="camera-placeholder" aria-hidden="true"></span>';
+    marker.innerHTML = `<div class="map-camera-feed ${feedClass}">${media}<span class="feed-badge">${c.edge_online ? "JETSON LIVE" : c.local_video ? "LOCAL LIVE" : "OFFLINE"}</span></div><div class="map-camera-meta"><strong>${c.id}</strong><span class="status ${c.status}">${labels[c.status]}</span></div>`;
     marker.onclick = () => { $("camera-select").value = c.id; };
     $("floor-map").appendChild(marker);
   });
