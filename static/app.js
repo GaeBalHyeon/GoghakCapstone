@@ -166,6 +166,13 @@ function showAlarm(camera, event) {
   beep();
 }
 
+function showCameraOfflineAlarm(camera) {
+  $("alarm").classList.remove("hidden");
+  $("alarm-title").textContent = "카메라 영상 끊김";
+  $("alarm-text").textContent = `${camera.floor} ${camera.zone} · ${camera.id} · 영상 수신 상태를 확인하세요.`;
+  beep();
+}
+
 function syncAlarm() {
   if (!state.cameras.some(camera => camera.status === "fire" || camera.status === "smoke")) {
     $("alarm").classList.add("hidden");
@@ -203,7 +210,7 @@ function connectWs() {
   const protocol = location.protocol === "https:" ? "wss" : "ws";
   const ws = new WebSocket(`${protocol}://${location.host}/ws`);
   ws.onopen = () => { $("connection").className = "connection online"; $("connection").innerHTML = "<span></span> 실시간 연결"; ws.send("ready"); };
-  ws.onmessage = async (message) => { const data = JSON.parse(message.data); if (["detection", "resolved", "events-cleared", "edge-status", "notification-updated"].includes(data.kind)) { await load(); if (data.event) showAlarm(data.camera, data.event); } };
+  ws.onmessage = async (message) => { const data = JSON.parse(message.data); if (["detection", "resolved", "events-cleared", "edge-status", "notification-updated", "camera-offline", "camera-recovered"].includes(data.kind)) { await load(); if (data.event) showAlarm(data.camera, data.event); if (data.kind === "camera-offline") showCameraOfflineAlarm(data.camera); if (data.kind === "camera-recovered" && !state.cameras.some(camera => camera.status === "fire" || camera.status === "smoke")) $("alarm").classList.add("hidden"); } };
   ws.onclose = () => { $("connection").className = "connection offline"; $("connection").innerHTML = "<span></span> 재연결 중"; setTimeout(connectWs, 2000); };
 }
 

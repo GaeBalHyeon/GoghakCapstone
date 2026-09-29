@@ -4,6 +4,7 @@ import asyncio
 import json
 import os
 import random
+import time
 from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
@@ -15,7 +16,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
 from app.database import backend_name, connect, init_db
-from app.notifications import send_telegram_alert, telegram_configured
+from app.notifications import send_telegram_alert, send_telegram_system_alert, telegram_configured
 
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -37,6 +38,10 @@ camera_state = {
 latest_frames: dict[str, bytes] = {}
 frame_versions: dict[str, int] = {}
 edge_connections: dict[str, int] = {}
+edge_last_frame: dict[str, float] = {}
+edge_seen_once: set[str] = set()
+edge_offline_alerted: dict[str, bool] = {}
+CAMERA_STALE_SECONDS = max(float(os.getenv("CAMERA_STALE_SECONDS", "10")), 5.0)
 
 
 class DetectionRequest(BaseModel):
@@ -185,12 +190,46 @@ async def simulator() -> None:
         )
 
 
+async def deliver_camera_status_notification(camera: dict, recovered: bool) -> None:
+    now = utc_now()
+    if recovered:
+        title = "✅ 카메라 연결 복구"
+        details = [f"카메라: {camera['id']}", f"위치: {camera['floor']} {camera['zone']}", f"복구 시각: {now}"]
+    else:
+        title = "⚠️ 카메라 영상 끊김"
+        details = [f"카메라: {camera['id']}", f"위치: {camera['floor']} {camera['zone']}", f"{CAMERA_STALE_SECONDS:.0f}초 이상 프레임이 수신되지 않았습니다.", f"감지 시각: {now}"]
+    result = await asyncio.to_thread(send_telegram_system_alert, title, details)
+    await manager.broadcast(
+        {
+            "kind": "camera-recovered" if recovered else "camera-offline",
+            "camera": camera,
+            "notification_status": result.status,
+        }
+    )
+
+
+async def camera_watchdog() -> None:
+    while True:
+        await asyncio.sleep(2)
+        now = time.monotonic()
+        for camera_id in tuple(edge_seen_once):
+            camera = camera_state[camera_id]
+            last_frame = edge_last_frame.get(camera_id, 0)
+            stale = not last_frame or now - last_frame >= CAMERA_STALE_SECONDS
+            if stale and not edge_offline_alerted.get(camera_id, False):
+                edge_offline_alerted[camera_id] = True
+                camera.update(edge_online=False, fps=0.0)
+                await manager.broadcast({"kind": "edge-status", "camera": camera})
+                asyncio.create_task(deliver_camera_status_notification(dict(camera), recovered=False))
+
+
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     init_db()
-    task = asyncio.create_task(simulator())
+    tasks = [asyncio.create_task(simulator()), asyncio.create_task(camera_watchdog())]
     yield
-    task.cancel()
+    for task in tasks:
+        task.cancel()
 
 
 app = FastAPI(title="EV Fire Guard Local", version="1.0.0", lifespan=lifespan)
@@ -326,9 +365,14 @@ async def edge_websocket(websocket: WebSocket, camera_id: str):
 
     await websocket.accept()
     edge_connections[camera_id] = edge_connections.get(camera_id, 0) + 1
+    edge_seen_once.add(camera_id)
+    edge_last_frame[camera_id] = time.monotonic()
+    recovered = edge_offline_alerted.pop(camera_id, False)
     camera["edge_online"] = True
     camera["updated_at"] = utc_now()
     await manager.broadcast({"kind": "edge-status", "camera": camera})
+    if recovered:
+        asyncio.create_task(deliver_camera_status_notification(dict(camera), recovered=True))
     try:
         while True:
             message = await websocket.receive()
@@ -337,6 +381,7 @@ async def edge_websocket(websocket: WebSocket, camera_id: str):
             if message.get("bytes") is not None:
                 latest_frames[camera_id] = message["bytes"]
                 frame_versions[camera_id] = frame_versions.get(camera_id, 0) + 1
+                edge_last_frame[camera_id] = time.monotonic()
                 camera["updated_at"] = utc_now()
                 continue
             if message.get("text"):

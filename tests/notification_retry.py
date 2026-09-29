@@ -10,7 +10,7 @@ from unittest.mock import patch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
-from app.notifications import send_telegram_alert
+from app.notifications import send_telegram_alert, send_telegram_system_alert
 
 
 EVENT = {
@@ -64,7 +64,12 @@ def run() -> None:
             assert result.notified_at
             assert calls == ["text", "photo"]
 
-    print("Telegram text-first delivery, retry, and non-retryable error checks passed.")
+    with patch.dict(os.environ, environment, clear=False), patch("app.notifications._post_form") as post:
+        result = send_telegram_system_alert("카메라 영상 끊김", ["카메라: CAM-01", "10초 이상 프레임 없음"])
+        assert result.status == "sent"
+        assert post.call_count == 1
+
+    print("Telegram event/system delivery, retry, and ordering checks passed.")
 
 
 if __name__ == "__main__":

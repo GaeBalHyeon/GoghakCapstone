@@ -137,6 +137,7 @@ CLEAR_SECONDS=2.0
 - `run_video/python/cloudflared.exe`는 현재 구조에서 사용하지 않으며 Git에서 제외되어 있다.
 - 자동 시뮬레이션은 사용자가 직접 켤 때만 동작해야 한다.
 - Telegram은 네트워크 오류, HTTP 429·5xx에 한해 기본 최대 3회 재시도한다. HTTP 400 같은 설정 오류는 반복하지 않는다.
+- `CAMERA_STALE_SECONDS`(기본 10초) 동안 Jetson 프레임이 없으면 끊김 Telegram 경보를 한 번 전송하고 재연결 시 복구 경보를 전송한다.
 
 ## 7. 관련 문서
 

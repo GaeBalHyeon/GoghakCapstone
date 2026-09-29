@@ -159,3 +159,38 @@ def send_telegram_alert(event: dict, snapshot_path: Path | None) -> Notification
             return NotificationResult(status="sent", error=photo_error, notified_at=notified_at)
 
     return NotificationResult(status="sent", notified_at=notified_at)
+
+
+def send_telegram_system_alert(title: str, details: list[str]) -> NotificationResult:
+    if not telegram_configured():
+        return NotificationResult(status="disabled")
+
+    token = os.getenv("TELEGRAM_BOT_TOKEN", "").strip()
+    chat_id = os.getenv("TELEGRAM_CHAT_ID", "").strip()
+    dashboard = os.getenv("DASHBOARD_URL", "http://127.0.0.1:8000").strip()
+    text = "\n".join(
+        [f"<b>{html.escape(title)}</b>", "", *[html.escape(line) for line in details], "", f'<a href="{html.escape(dashboard, quote=True)}">관제 페이지 열기</a>']
+    )
+    max_attempts = min(max(int(os.getenv("TELEGRAM_MAX_ATTEMPTS", "3")), 1), 5)
+    delays = (2, 5, 10, 20)
+    last_error = "Telegram 시스템 알림 실패"
+    for attempt in range(1, max_attempts + 1):
+        try:
+            _post_form(
+                f"https://api.telegram.org/bot{token}/sendMessage",
+                {"chat_id": chat_id, "text": text, "parse_mode": "HTML"},
+            )
+            return NotificationResult(status="sent", notified_at=datetime.now().astimezone().isoformat(timespec="seconds"))
+        except urllib.error.HTTPError as error:
+            last_error = f"Telegram HTTP {error.code} ({attempt}/{max_attempts})"
+            retryable = error.code == 429 or error.code >= 500
+        except (urllib.error.URLError, TimeoutError) as error:
+            last_error = f"Telegram connection error: {type(error).__name__} ({attempt}/{max_attempts})"
+            retryable = True
+        except Exception as error:
+            last_error = f"Telegram error: {type(error).__name__} ({attempt}/{max_attempts})"
+            retryable = False
+        if not retryable or attempt >= max_attempts:
+            break
+        time.sleep(delays[min(attempt - 1, len(delays) - 1)])
+    return NotificationResult(status="failed", error=last_error)
