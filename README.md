@@ -14,6 +14,8 @@ setup.bat
 run.bat
 ```
 
+설정이 완료된 현재 PC에서는 재부팅 후 바탕화면의 `EV_Fire_Guard_START.bat` 또는 프로젝트의 `START_EV_FIRE_GUARD.bat`을 더블클릭하면 MySQL 확인, 현재 LAN IP 반영, Windows 서버 시작과 홈페이지 열기를 한 번에 처리합니다. 실행 중에는 열린 CMD 창을 닫지 않습니다.
+
 최초 한 번만 `setup.bat`을 실행하면 됩니다. 이후에는 `run.bat`만 실행하면 됩니다. 서버를 종료할 때는 CMD 창에서 `Ctrl+C`를 누릅니다.
 
 설치 스크립트는 이 PC의 Codex 내장 Python을 먼저 사용하며, 없으면 시스템 Python을 찾습니다. PowerShell용 `setup.ps1`, `run.ps1`도 보조 실행 파일로 유지했습니다.

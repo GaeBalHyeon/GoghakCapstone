@@ -14,6 +14,8 @@ Windows FastAPI → 실시간 홈페이지 + 로컬 MySQL
 
 Jetson은 카메라와 AI 추론을 담당합니다. Windows PC는 영상 중계, 홈페이지, 이벤트 기록과 MySQL을 담당합니다. 브라우저는 Windows 서버에만 접속합니다.
 
+현재 Jetson의 `WINDOWS_SERVER`는 고정 IP가 아니라 `DESKTOP-TCULRT5.local:8000`을 사용합니다. 같은 공유기라면 DHCP로 두 장비의 IP가 바뀌어도 mDNS 호스트명으로 Windows를 다시 찾습니다.
+
 ## GitHub와 공유기의 역할
 
 - GitHub는 Windows와 Jetson이 동일한 소스와 문서를 공유하는 기준 저장소입니다.
