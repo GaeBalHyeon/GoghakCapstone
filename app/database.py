@@ -92,7 +92,11 @@ def init_db() -> None:
                     snapshot_path VARCHAR(255) NULL,
                     notification_status VARCHAR(20) NULL,
                     notification_error TEXT NULL,
-                    notified_at VARCHAR(40) NULL
+                    notified_at VARCHAR(40) NULL,
+                    cutoff_status VARCHAR(30) NULL,
+                    cutoff_requested_at VARCHAR(40) NULL,
+                    cutoff_completed_at VARCHAR(40) NULL,
+                    cutoff_response_ms INT NULL
                 );
                 CREATE TABLE IF NOT EXISTS settings (
                     id INT PRIMARY KEY,
@@ -109,6 +113,10 @@ def init_db() -> None:
                 ("notification_status", "VARCHAR(20) NULL"),
                 ("notification_error", "TEXT NULL"),
                 ("notified_at", "VARCHAR(40) NULL"),
+                ("cutoff_status", "VARCHAR(30) NULL"),
+                ("cutoff_requested_at", "VARCHAR(40) NULL"),
+                ("cutoff_completed_at", "VARCHAR(40) NULL"),
+                ("cutoff_response_ms", "INT NULL"),
             ):
                 if not con.execute("SHOW COLUMNS FROM events LIKE ?", (name,)).fetchone():
                     con.execute(f"ALTER TABLE events ADD COLUMN {name} {definition}")
@@ -130,7 +138,11 @@ def init_db() -> None:
                     snapshot_path TEXT,
                     notification_status TEXT,
                     notification_error TEXT,
-                    notified_at TEXT
+                    notified_at TEXT,
+                    cutoff_status TEXT,
+                    cutoff_requested_at TEXT,
+                    cutoff_completed_at TEXT,
+                    cutoff_response_ms INTEGER
                 );
                 CREATE TABLE IF NOT EXISTS settings (
                     id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -142,9 +154,12 @@ def init_db() -> None:
                 """
             )
             existing = {row["name"] for row in con.execute("PRAGMA table_info(events)").fetchall()}
-            for name in ("snapshot_path", "notification_status", "notification_error", "notified_at"):
+            text_columns = ("snapshot_path", "notification_status", "notification_error", "notified_at", "cutoff_status", "cutoff_requested_at", "cutoff_completed_at")
+            for name in text_columns:
                 if name not in existing:
                     con.execute(f"ALTER TABLE events ADD COLUMN {name} TEXT")
+            if "cutoff_response_ms" not in existing:
+                con.execute("ALTER TABLE events ADD COLUMN cutoff_response_ms INTEGER")
 
 
 def backend_name() -> str:

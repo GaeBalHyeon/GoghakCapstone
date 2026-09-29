@@ -35,6 +35,18 @@ camera_state = {
     cam["id"]: {**cam, "status": "normal", "confidence": 0.0, "fps": 0.0, "updated_at": None, "edge_online": False}
     for cam in CAMERAS
 }
+charging_control_state = {
+    cam["id"]: {
+        "camera_id": cam["id"],
+        "charger": cam["charger"],
+        "zone": cam["zone"],
+        "status": "available" if cam["charger"] != "-" else "not_applicable",
+        "response_ms": None,
+        "updated_at": None,
+        "simulation": True,
+    }
+    for cam in CAMERAS
+}
 latest_frames: dict[str, bytes] = {}
 frame_versions: dict[str, int] = {}
 edge_connections: dict[str, int] = {}
@@ -90,6 +102,10 @@ def utc_now() -> str:
     return datetime.now().astimezone().isoformat(timespec="seconds")
 
 
+def utc_now_ms() -> str:
+    return datetime.now().astimezone().isoformat(timespec="milliseconds")
+
+
 def get_camera(camera_id: str) -> dict:
     camera = camera_state.get(camera_id)
     if not camera:
@@ -101,6 +117,10 @@ async def register_detection(req: DetectionRequest) -> dict:
     camera = get_camera(req.camera_id)
     now = utc_now()
     camera.update(status=req.event_type, confidence=req.confidence, updated_at=now)
+    if req.event_type == "normal":
+        control = charging_control_state[camera["id"]]
+        if control["status"] == "blocked":
+            control.update(status="available", response_ms=None, updated_at=now)
 
     event = None
     if req.event_type != "normal":
@@ -117,6 +137,41 @@ async def register_detection(req: DetectionRequest) -> dict:
                 ),
             )
             event_id = cursor.lastrowid
+        cutoff = {
+            "cutoff_status": "not_applicable",
+            "cutoff_requested_at": None,
+            "cutoff_completed_at": None,
+            "cutoff_response_ms": None,
+        }
+        if req.event_type == "fire" and camera["charger"] != "-":
+            requested_at = utc_now_ms()
+            started = time.perf_counter()
+            await asyncio.sleep(0.18)
+            response_ms = max(round((time.perf_counter() - started) * 1000), 1)
+            completed_at = utc_now_ms()
+            cutoff = {
+                "cutoff_status": "simulated_blocked",
+                "cutoff_requested_at": requested_at,
+                "cutoff_completed_at": completed_at,
+                "cutoff_response_ms": response_ms,
+            }
+            charging_control_state[camera["id"]].update(
+                status="blocked",
+                response_ms=response_ms,
+                updated_at=completed_at,
+            )
+        with connect() as con:
+            con.execute(
+                """
+                UPDATE events
+                SET cutoff_status=?, cutoff_requested_at=?, cutoff_completed_at=?, cutoff_response_ms=?
+                WHERE id=?
+                """,
+                (
+                    cutoff["cutoff_status"], cutoff["cutoff_requested_at"],
+                    cutoff["cutoff_completed_at"], cutoff["cutoff_response_ms"], event_id,
+                ),
+            )
         snapshot_path = None
         frame = latest_frames.get(camera["id"])
         if frame:
@@ -142,6 +197,7 @@ async def register_detection(req: DetectionRequest) -> dict:
             "notification_status": "pending" if telegram_configured() else "disabled",
             "notification_error": None,
             "notified_at": None,
+            **cutoff,
         }
         with connect() as con:
             con.execute(
@@ -226,6 +282,15 @@ async def camera_watchdog() -> None:
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     init_db()
+    with connect() as con:
+        active_cutoffs = con.execute(
+            "SELECT camera_id, cutoff_response_ms, cutoff_completed_at FROM events WHERE resolved_at IS NULL AND cutoff_status=?",
+            ("simulated_blocked",),
+        ).fetchall()
+    for event in active_cutoffs:
+        control = charging_control_state.get(event["camera_id"])
+        if control:
+            control.update(status="blocked", response_ms=event["cutoff_response_ms"], updated_at=event["cutoff_completed_at"])
     tasks = [asyncio.create_task(simulator()), asyncio.create_task(camera_watchdog())]
     yield
     for task in tasks:
@@ -250,6 +315,11 @@ async def health():
 @app.get("/api/cameras")
 async def cameras():
     return list(camera_state.values())
+
+
+@app.get("/api/charging-controls")
+async def charging_controls():
+    return list(charging_control_state.values())
 
 
 @app.post("/api/detections")
@@ -296,6 +366,9 @@ async def delete_events():
     now = utc_now()
     for camera in camera_state.values():
         camera.update(status="normal", confidence=0.0, updated_at=now)
+    for control in charging_control_state.values():
+        if control["status"] != "not_applicable":
+            control.update(status="available", response_ms=None, updated_at=now)
     payload = {"kind": "events-cleared", "deleted": count, "cameras": list(camera_state.values())}
     await manager.broadcast(payload)
     return payload
@@ -319,7 +392,10 @@ async def resolve(event_id: int, req: ResolveRequest):
         )
     camera = get_camera(event["camera_id"])
     camera.update(status="normal", confidence=0.0, updated_at=resolved_at)
-    payload = {"kind": "resolved", "event_id": event_id, "camera": camera}
+    control = charging_control_state[camera["id"]]
+    if control["status"] == "blocked":
+        control.update(status="available", response_ms=None, updated_at=resolved_at)
+    payload = {"kind": "resolved", "event_id": event_id, "camera": camera, "charging_control": control}
     await manager.broadcast(payload)
     return payload
 

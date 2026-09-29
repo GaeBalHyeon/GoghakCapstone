@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0a0a0a">
-  <title>EV Fire Guard</title><link rel="stylesheet" href="/static/style.css?v=20260929-mobile-camera-grid">
+  <title>EV Fire Guard</title><link rel="stylesheet" href="/static/style.css?v=20260929-virtual-cutoff">
 </head>
 <body>
 <div class="app-shell">
@@ -37,11 +37,16 @@
             <div class="system-status-row"><span class="system-status-icon" id="telegram-health-dot"></span><div><strong>Telegram</strong><small id="telegram-health-text">외부 경보 확인 중</small></div><b id="telegram-health-value">—</b></div>
             <div class="system-status-row"><span class="system-status-icon" id="database-health-dot"></span><div><strong>이벤트 DB</strong><small id="database-health-text">저장소 확인 중</small></div><b id="database-health-value">—</b></div>
           </div>
+          <div class="charging-control-panel">
+            <div class="charging-control-title"><span>CHARGING SAFETY</span><b>SIMULATION</b></div>
+            <div id="charging-control-list" class="charging-control-list"></div>
+            <p>화재 확정 시 해당 구역의 가상 충전 차단 명령을 자동 수행합니다.</p>
+          </div>
           <div class="system-foot"><span>마지막 Jetson 수신</span><strong id="last-frame-time">—</strong></div>
         </aside>
       </section>
-      <section id="events" class="content-section surface log-surface"><div class="surface-head"><div><h3>감지 이벤트</h3><p>발생 순서와 관리자 확인 상태</p></div><div class="table-actions"><button id="refresh" class="quiet-button">새로고침</button><button id="delete-events" class="danger-button">기록 삭제</button></div></div><div class="table-wrap"><table><thead><tr><th>스냅샷</th><th>감지 시각</th><th>카메라</th><th>구역</th><th>유형</th><th>신뢰도</th><th>외부 알림</th><th>상태</th><th></th></tr></thead><tbody id="event-table"></tbody></table></div></section>
-      <section id="daily-summary" class="content-section daily-summary"><div class="section-heading compact"><div><p class="overline">TODAY ANALYTICS</p><h2>오늘의 관제 요약</h2></div><p>오늘 발생한 감지와 처리 현황을 실시간 집계합니다.</p></div><div class="daily-stat-grid"><article><span>전체 감지</span><strong id="daily-total">0</strong><small>오늘 누적 이벤트</small></article><article><span>화재 / 연기</span><strong id="daily-types">0 / 0</strong><small>유형별 감지</small></article><article><span>처리 완료</span><strong id="daily-resolved">0</strong><small id="daily-resolved-rate">처리율 0%</small></article><article><span>평균 확인 시간</span><strong id="daily-response">—</strong><small>관리자 확인 기준</small></article></div><div class="analytics-grid"><article class="surface chart-card"><div><h3>카메라별 감지</h3><p>오늘 이벤트 분포</p></div><div id="daily-camera-chart" class="bar-chart"></div></article><article class="surface chart-card"><div><h3>유형별 감지</h3><p>화재와 연기 비교</p></div><div id="daily-type-chart" class="bar-chart"></div></article></div></section>
+      <section id="events" class="content-section surface log-surface"><div class="surface-head"><div><h3>감지 이벤트</h3><p>발생 순서와 관리자 확인 상태</p></div><div class="table-actions"><button id="refresh" class="quiet-button">새로고침</button><button id="delete-events" class="danger-button">기록 삭제</button></div></div><div class="table-wrap"><table><thead><tr><th>스냅샷</th><th>감지 시각</th><th>카메라</th><th>구역</th><th>유형</th><th>신뢰도</th><th>충전 안전 제어</th><th>외부 알림</th><th>상태</th><th></th></tr></thead><tbody id="event-table"></tbody></table></div></section>
+      <section id="daily-summary" class="content-section daily-summary"><div class="section-heading compact"><div><p class="overline">TODAY ANALYTICS</p><h2>오늘의 관제 요약</h2></div><p>오늘 발생한 감지와 처리 현황을 실시간 집계합니다.</p></div><div class="daily-stat-grid"><article><span>전체 감지</span><strong id="daily-total">0</strong><small>오늘 누적 이벤트</small></article><article><span>화재 / 연기</span><strong id="daily-types">0 / 0</strong><small>유형별 감지</small></article><article><span>처리 완료</span><strong id="daily-resolved">0</strong><small id="daily-resolved-rate">처리율 0%</small></article><article><span>평균 확인 시간</span><strong id="daily-response">—</strong><small>관리자 확인 기준</small></article><article><span>평균 차단 응답</span><strong id="daily-cutoff-response">—</strong><small>가상 충전기 제어 기준</small></article></div><div class="analytics-grid"><article class="surface chart-card"><div><h3>카메라별 감지</h3><p>오늘 이벤트 분포</p></div><div id="daily-camera-chart" class="bar-chart"></div></article><article class="surface chart-card"><div><h3>유형별 감지</h3><p>화재와 연기 비교</p></div><div id="daily-type-chart" class="bar-chart"></div></article></div></section>
     </main>
   </div>
 </div>
@@ -54,6 +59,6 @@
   <div class="camera-modal-head"><div><p class="overline">DETECTION CONTROL</p><h2 id="test-control-title">감지 테스트</h2><p>카메라별 경보 흐름과 자동 시뮬레이션을 검증합니다.</p></div><button id="test-control-close" class="modal-close" aria-label="감지 테스트 닫기">×</button></div>
   <div class="test-control-body"><div class="field"><label for="camera-select">대상 카메라</label><select id="camera-select"></select></div><div class="scenario-buttons"><button class="scenario fire-action" data-event="fire"><span>화재</span><small>위험 이벤트 발생</small></button><button class="scenario smoke-action" data-event="smoke"><span>연기</span><small>의심 이벤트 발생</small></button><button class="scenario normal-action" data-event="normal"><span>정상 복귀</span><small>선택 카메라 초기화</small></button></div><div class="control-divider"></div><label class="switch-row" for="auto-sim"><span><strong>자동 시뮬레이션</strong><small>설정한 간격으로 이벤트 생성</small></span><input id="auto-sim" type="checkbox"><i></i></label><div class="field inline-field"><label for="interval">이벤트 간격</label><div><input id="interval" type="number" min="10" max="600" value="45"><span>초</span></div></div><button id="save-settings" class="primary-button">설정 저장</button></div>
 </dialog>
-<audio id="alarm-audio" loop></audio><script src="/static/app.js?v=20260929-mobile-camera-grid"></script>
+<audio id="alarm-audio" loop></audio><script src="/static/app.js?v=20260929-virtual-cutoff"></script>
 </body></html>
 

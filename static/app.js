@@ -1,4 +1,4 @@
-const state = { cameras: [], events: [], settings: { simulation_enabled: false }, health: {}, notifications: {} };
+const state = { cameras: [], events: [], chargingControls: [], settings: { simulation_enabled: false }, health: {}, notifications: {} };
 const $ = (id) => document.getElementById(id);
 
 const labels = { fire: "화재", smoke: "연기", normal: "정상" };
@@ -83,6 +83,15 @@ function renderSystemHealth() {
   $("system-health-badge").className = `system-health-badge ${allHealthy ? "healthy" : "attention"}`;
   $("system-health-badge").textContent = allHealthy ? "ALL SYSTEMS GO" : "확인 필요";
   $("last-frame-time").textContent = jetson?.updated_at ? new Date(jetson.updated_at).toLocaleString("ko-KR") : "수신 기록 없음";
+  renderChargingControls();
+}
+
+function renderChargingControls() {
+  const controls = state.chargingControls.filter(control => control.status !== "not_applicable");
+  $("charging-control-list").innerHTML = controls.map(control => {
+    const blocked = control.status === "blocked";
+    return `<div class="charging-control-row ${blocked ? "blocked" : "available"}"><span></span><div><strong>${control.charger}</strong><small>${control.zone}</small></div><b>${blocked ? `차단 완료 · ${control.response_ms}ms` : "충전 가능"}</b></div>`;
+  }).join("") || '<div class="charging-control-empty">등록된 충전구역 없음</div>';
 }
 
 function renderDailySummary() {
@@ -93,11 +102,14 @@ function renderDailySummary() {
   const resolved = events.filter(event => event.resolved_at);
   const responseSeconds = resolved.map(event => (new Date(event.resolved_at) - new Date(event.detected_at)) / 1000).filter(value => value >= 0);
   const average = responseSeconds.length ? responseSeconds.reduce((sum, value) => sum + value, 0) / responseSeconds.length : null;
+  const cutoffTimes = events.map(event => Number(event.cutoff_response_ms)).filter(value => Number.isFinite(value) && value > 0);
+  const cutoffAverage = cutoffTimes.length ? cutoffTimes.reduce((sum, value) => sum + value, 0) / cutoffTimes.length : null;
   $("daily-total").textContent = events.length;
   $("daily-types").textContent = `${fire} / ${smoke}`;
   $("daily-resolved").textContent = resolved.length;
   $("daily-resolved-rate").textContent = `처리율 ${events.length ? Math.round(resolved.length / events.length * 100) : 0}%`;
   $("daily-response").textContent = average === null ? "—" : average < 60 ? `${Math.round(average)}초` : `${(average / 60).toFixed(1)}분`;
+  $("daily-cutoff-response").textContent = cutoffAverage === null ? "—" : `${Math.round(cutoffAverage)}ms`;
 
   const cameraCounts = Object.fromEntries(state.cameras.map(camera => [camera.id, 0]));
   events.forEach(event => { cameraCounts[event.camera_id] = (cameraCounts[event.camera_id] || 0) + 1; });
@@ -140,8 +152,9 @@ function renderEvents() {
     <tr><td>${e.snapshot_url ? `<button class="snapshot-button" onclick="openSnapshot(${e.id})" aria-label="${e.camera_id} 감지 스냅샷 확대"><img src="${e.snapshot_url}" alt="${e.camera_id} 감지 스냅샷"></button>` : '<span class="snapshot-empty">없음</span>'}</td>
     <td>${new Date(e.detected_at).toLocaleString("ko-KR")}</td><td>${e.camera_id}</td><td>${e.floor} ${e.zone}</td>
     <td><span class="status ${e.event_type}">${labels[e.event_type]}</span></td><td>${Math.round(e.confidence * 100)}%</td>
+    <td>${e.cutoff_status === "simulated_blocked" ? `<span class="cutoff-state blocked">차단 완료 · ${e.cutoff_response_ms}ms<small>SIMULATION</small></span>` : '<span class="cutoff-state idle">해당 없음</span>'}</td>
     <td><span class="notification-state ${e.notification_status || "disabled"}">${notificationLabels[e.notification_status] || "대기"}</span></td>
-    <td>${e.resolved_at ? "확인 완료" : "발생 중"}</td><td>${e.resolved_at ? "" : `<button onclick="resolveEvent(${e.id})">확인·해제</button>`}</td></tr>`).join("") : `<tr><td colspan="9" class="empty">저장된 감지 이벤트가 없습니다.</td></tr>`;
+    <td>${e.resolved_at ? "확인 완료" : "발생 중"}</td><td>${e.resolved_at ? "" : `<button onclick="resolveEvent(${e.id})">확인·해제</button>`}</td></tr>`).join("") : `<tr><td colspan="10" class="empty">저장된 감지 이벤트가 없습니다.</td></tr>`;
   renderDailySummary();
 }
 
@@ -162,7 +175,8 @@ function showAlarm(camera, event) {
   if (!event) return;
   $("alarm").classList.remove("hidden");
   $("alarm-title").textContent = event.event_type === "fire" ? "🚨 화재 감지" : "⚠ 연기 감지";
-  $("alarm-text").textContent = `${camera.floor} ${camera.zone} · ${camera.id} · 신뢰도 ${Math.round(camera.confidence * 100)}%`;
+  const cutoff = event.cutoff_status === "simulated_blocked" ? ` · ${event.charger} 가상 긴급 차단 완료 (${event.cutoff_response_ms}ms)` : "";
+  $("alarm-text").textContent = `${camera.floor} ${camera.zone} · ${camera.id} · 신뢰도 ${Math.round(camera.confidence * 100)}%${cutoff}`;
   beep();
 }
 
@@ -189,7 +203,7 @@ function beep() {
 }
 
 async function load() {
-  [state.cameras, state.events, state.settings, state.health, state.notifications] = await Promise.all([api("/api/cameras"), api("/api/events"), api("/api/settings"), api("/api/health"), api("/api/notifications/status")]);
+  [state.cameras, state.events, state.chargingControls, state.settings, state.health, state.notifications] = await Promise.all([api("/api/cameras"), api("/api/events"), api("/api/charging-controls"), api("/api/settings"), api("/api/health"), api("/api/notifications/status")]);
   $("auto-sim").checked = state.settings.simulation_enabled; $("interval").value = state.settings.auto_event_interval;
   $("camera-select").innerHTML = state.cameras.map(c => `<option value="${c.id}">${c.id} · ${c.zone}</option>`).join("");
   renderCameras(); renderEvents(); renderSystemHealth(); syncAlarm();

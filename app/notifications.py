@@ -33,8 +33,7 @@ def _caption(event: dict) -> str:
     event_label = "화재" if event["event_type"] == "fire" else "연기"
     icon = "🚨" if event["event_type"] == "fire" else "⚠️"
     dashboard = os.getenv("DASHBOARD_URL", "http://127.0.0.1:8000").strip()
-    return "\n".join(
-        [
+    lines = [
             f"{icon} <b>{event_label} 감지</b>",
             "",
             f"카메라: <b>{html.escape(str(event['camera_id']))}</b>",
@@ -45,7 +44,15 @@ def _caption(event: dict) -> str:
             "",
             f'<a href="{html.escape(dashboard, quote=True)}">관제 페이지 열기</a>',
         ]
-    )
+    if event.get("cutoff_status") == "simulated_blocked":
+        lines[5:5] = [
+            "",
+            "🔌 <b>가상 긴급 충전 차단 완료</b>",
+            f"대상: {html.escape(str(event['charger']))}",
+            f"처리 시간: {int(event['cutoff_response_ms'])}ms",
+            "상태: SIMULATION · 실제 충전기 제어 아님",
+        ]
+    return "\n".join(lines)
 
 
 def _photo_caption(event: dict) -> str:
