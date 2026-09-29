@@ -31,7 +31,8 @@ function renderCameras() {
   state.cameras.forEach(c => {
     const marker = document.createElement("article");
     marker.className = `camera-marker ${c.status}`;
-    marker.style.left = `${c.x}%`; marker.style.top = `${c.y}%`;
+    marker.style.setProperty("--camera-x", `${c.x}%`);
+    marker.style.setProperty("--camera-y", `${c.y}%`);
     const feedClass = c.edge_online ? "live" : c.local_video ? "local-live" : "offline";
     const media = c.edge_online
       ? `<img src="/api/video_feed/${c.id}" alt="${c.id} Jetson 실시간 YOLO 영상">`
@@ -39,9 +40,36 @@ function renderCameras() {
         ? `<video src="${c.local_video}" autoplay muted loop playsinline preload="auto" aria-label="${c.id} Windows 관제 영상"></video>`
         : '<span class="camera-placeholder" aria-hidden="true"></span>';
     marker.innerHTML = `<div class="map-camera-feed ${feedClass}">${media}<span class="feed-badge">${c.edge_online ? "JETSON LIVE" : c.local_video ? "LOCAL LIVE" : "OFFLINE"}</span></div><div class="map-camera-meta"><strong>${c.id}</strong><span class="status ${c.status}">${labels[c.status]}</span></div>`;
-    marker.onclick = () => { $("camera-select").value = c.id; };
+    marker.tabIndex = 0;
+    marker.setAttribute("role", "button");
+    marker.setAttribute("aria-label", `${c.id} ${c.zone} 확대 보기`);
+    marker.onclick = () => { $("camera-select").value = c.id; openCameraModal(c); };
+    marker.onkeydown = event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); marker.click(); } };
     $("floor-map").appendChild(marker);
   });
+}
+
+function openCameraModal(camera) {
+  const dialog = $("camera-modal");
+  const source = camera.edge_online ? "Jetson YOLO 실시간 분석" : camera.local_video ? "Windows 로컬 관제 영상" : "연결 대기";
+  const media = camera.edge_online
+    ? `<img src="/api/video_feed/${camera.id}" alt="${camera.id} 확대된 Jetson YOLO 영상">`
+    : camera.local_video
+      ? `<video src="${camera.local_video}" autoplay muted loop playsinline controls aria-label="${camera.id} 확대된 Windows 관제 영상"></video>`
+      : '<div class="modal-offline"><span></span><strong>카메라 연결 대기</strong></div>';
+  $("modal-camera-title").textContent = `${camera.id} · ${camera.zone}`;
+  $("modal-camera-description").textContent = `${camera.floor} · ${camera.charger}`;
+  $("modal-camera-source").textContent = source + (camera.edge_online ? ` · ${camera.fps.toFixed(1)} FPS` : "");
+  $("modal-camera-status").className = `status ${camera.status}`;
+  $("modal-camera-status").textContent = labels[camera.status];
+  $("camera-modal-feed").innerHTML = media;
+  dialog.showModal();
+}
+
+function closeCameraModal() {
+  const dialog = $("camera-modal");
+  dialog.close();
+  $("camera-modal-feed").replaceChildren();
 }
 
 function renderEvents() {
@@ -60,6 +88,12 @@ function showAlarm(camera, event) {
   beep();
 }
 
+function syncAlarm() {
+  if (!state.cameras.some(camera => camera.status === "fire" || camera.status === "smoke")) {
+    $("alarm").classList.add("hidden");
+  }
+}
+
 function beep() {
   const ctx = new (window.AudioContext || window.webkitAudioContext)();
   [0, .28, .56].forEach(delay => {
@@ -74,7 +108,7 @@ async function load() {
   state.settings = await api("/api/settings");
   $("auto-sim").checked = state.settings.simulation_enabled; $("interval").value = state.settings.auto_event_interval;
   $("camera-select").innerHTML = state.cameras.map(c => `<option value="${c.id}">${c.id} · ${c.zone}</option>`).join("");
-  renderCameras(); renderEvents();
+  renderCameras(); renderEvents(); syncAlarm();
 }
 
 async function trigger(eventType) {
@@ -106,6 +140,8 @@ $("delete-events").onclick = async () => {
   alert(`${result.deleted}건의 기록을 삭제했습니다.`);
 };
 $("alarm-close").onclick = () => $("alarm").classList.add("hidden");
+$("camera-modal-close").onclick = closeCameraModal;
+$("camera-modal").onclick = event => { if (event.target === $("camera-modal")) closeCameraModal(); };
 $("save-settings").onclick = async () => { await api("/api/settings", { method: "PUT", body: JSON.stringify({ simulation_enabled: $("auto-sim").checked, auto_event_interval: Number($("interval").value) }) }); alert("설정을 저장했습니다."); };
 load().then(connectWs).catch(err => { console.error(err); alert("서버 데이터를 불러오지 못했습니다."); });
 

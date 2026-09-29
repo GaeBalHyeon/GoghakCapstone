@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 import time
 from collections import deque
 from pathlib import Path
@@ -40,9 +41,22 @@ def class_kind(name: str) -> str | None:
     return None
 
 
+def drain_incoming(ws):
+    # The server sends WebSocket pings. websocket-client only answers them while
+    # reading, so keep a reader running or the server drops the connection.
+    try:
+        while ws.connected:
+            ws.recv()
+    except Exception:
+        pass
+
+
 def connect_websocket():
     url = f"ws://{SERVER}/ws/edge/{quote(CAMERA_ID)}?token={quote(TOKEN)}"
-    return websocket.create_connection(url, timeout=10)
+    ws = websocket.create_connection(url, timeout=10, enable_multithread=True)
+    ws.settimeout(None)
+    threading.Thread(target=drain_incoming, args=(ws,), daemon=True).start()
+    return ws
 
 
 def main():
@@ -84,6 +98,7 @@ def main():
                 fps_frames = 0
                 fps_started = time.perf_counter()
 
+            cleared_detection = False
             for kind in ("fire", "smoke"):
                 histories[kind].append(seen[kind] > 0)
                 confirmed = len(histories[kind]) == WINDOW_SIZE and sum(histories[kind]) >= MIN_DETECTIONS
@@ -95,6 +110,12 @@ def main():
                     })
                 elif not confirmed and active[kind] and sum(histories[kind]) == 0:
                     active[kind] = False
+                    cleared_detection = True
+            if cleared_detection and not any(active.values()):
+                pending_events.append({
+                    "kind": "detection", "event_type": "normal",
+                    "confidence": 0.0, "fps": measured_fps,
+                })
 
             now = time.perf_counter()
             if now - last_sent < frame_interval:

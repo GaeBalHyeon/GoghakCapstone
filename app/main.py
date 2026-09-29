@@ -22,10 +22,10 @@ STATIC = ROOT / "static"
 VIDEO_DIR = ROOT / "video"
 
 CAMERAS = [
-    {"id": "CAM-01", "floor": "B1", "zone": "충전구역 A", "charger": "A-01~A-04", "x": 20, "y": 31},
-    {"id": "CAM-02", "floor": "B1", "zone": "충전구역 B", "charger": "B-01~B-04", "x": 69, "y": 31, "local_video": "/videos/1.mp4"},
-    {"id": "CAM-03", "floor": "B1", "zone": "일반 주차구역", "charger": "-", "x": 20, "y": 71, "local_video": "/videos/2.mp4"},
-    {"id": "CAM-04", "floor": "B1", "zone": "출입구", "charger": "-", "x": 69, "y": 71, "local_video": "/videos/3.mp4"},
+    {"id": "CAM-01", "floor": "B1", "zone": "충전구역 A", "charger": "A-01~A-04", "x": 21.5, "y": 26},
+    {"id": "CAM-02", "floor": "B1", "zone": "충전구역 B", "charger": "B-01~B-04", "x": 78.5, "y": 26, "local_video": "/videos/1.mp4"},
+    {"id": "CAM-03", "floor": "B1", "zone": "일반 주차구역", "charger": "-", "x": 21.5, "y": 74, "local_video": "/videos/2.mp4"},
+    {"id": "CAM-04", "floor": "B1", "zone": "출입구", "charger": "-", "x": 78.5, "y": 74, "local_video": "/videos/3.mp4"},
 ]
 
 camera_state = {
@@ -181,7 +181,10 @@ async def delete_events():
     with connect() as con:
         count = con.execute("SELECT COUNT(*) AS count FROM events").fetchone()["count"]
         con.execute("DELETE FROM events")
-    payload = {"kind": "events-cleared", "deleted": count}
+    now = utc_now()
+    for camera in camera_state.values():
+        camera.update(status="normal", confidence=0.0, updated_at=now)
+    payload = {"kind": "events-cleared", "deleted": count, "cameras": list(camera_state.values())}
     await manager.broadcast(payload)
     return payload
 

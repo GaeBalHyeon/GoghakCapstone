@@ -64,23 +64,30 @@ cd /d C:\Users\Ria\Desktop\capstone\re_capstone
 
 ## 4. 아직 완료되지 않은 실제 장비 작업
 
-### MySQL
+### MySQL (2026-09-29 완료)
 
-- Windows의 `MySQL80` 서비스는 실행 중이다.
-- 프로젝트 루트 `.env`는 아직 생성되지 않았다.
-- 따라서 현재 기본 실행은 SQLite이며 실제 MySQL 저장 완료 상태가 아니다.
-- 관리자 권한 CMD에서 다음을 실행하고 MySQL 관리자 비밀번호를 입력해야 한다.
+- `configure_windows.bat`으로 DB `ev_fire_guard`, 계정 `evguard`, 테이블, `.env`, `EDGE_TOKEN`을 생성했다.
+- MySQL 8 기본 인증(`caching_sha2_password`)에 필요한 `cryptography==44.0.0`을 `requirements.txt`에 추가했다.
+- 관리자 CMD에서 `allow_firewall_8000.bat`으로 개인 네트워크 TCP 8000 인바운드 규칙을 추가했다.
+- `run.bat` 실행 시 `/api/health`가 `database: mysql`을 반환한다.
+- `diagnose_windows.bat` 9/9 PASS, `tests\edge_integration.py`와 `tests\mysql_integration.py` 모두 통과했다.
+- Windows 측 남은 작업은 없으며, Jetson `.env`의 `EDGE_TOKEN`에 Windows `.env`의 값을 복사하면 된다.
 
-```bat
-cd /d C:\Users\Ria\Desktop\capstone\re_capstone
-configure_windows.bat
-.venv\Scripts\python.exe tests\mysql_integration.py
-```
+### Jetson 실장 (2026-09-29 연결 완료)
 
-### Jetson 실장
+- 장비: Jetson Orin Nano Super, JetPack 6 (L4T R36.4.7, CUDA 12.6, cuDNN 9.3), 계정 `pangsu`
+- 현재 공유기: Windows `192.168.0.223`, Jetson `192.168.0.117` (Jetson은 `192.168.0.201`로도 접속됨)
+- Windows 네트워크 프로필을 "개인"으로 변경해야 8000 방화벽 규칙이 적용된다.
+- Windows → Jetson SSH 키: `C:\Users\Ria\.ssh\evguard_jetson` (Jetson `authorized_keys`의 `ria-pc-evguard`)
+- 설치 위치: `~/evguard/jetson_agent`, 전용 가상환경 `~/evguard/venv`
+- 기존 시스템/사용자 PyTorch가 cuDNN 8·CPU 빌드로 꼬여 있어 건드리지 않고, venv에 jetson-ai-lab `jp6/cu126` 인덱스의 `torch==2.8.0`, `torchvision==0.23.0`을 설치했다. (`--index-url`로 이 인덱스만 지정해야 CPU 빌드로 바뀌지 않는다.)
+- venv 추가 패키지: `ultralytics==8.3.0`, `numpy==1.26.4`, `opencv-python-headless==4.10.0.84`, `websocket-client==1.8.0`, `python-dotenv==1.0.1`
+- 실행: `~/evguard/run_agent.sh` (로그 `~/evguard/agent.log`), 중지: `~/evguard/stop_agent.sh`
+- `diagnose.py` 8/8 PASS, USB 카메라 `/dev/video0` 640x480, GPU 추론 약 27 FPS, 서버 MJPEG 약 7 FPS 수신 확인
+- `agent.py`가 서버의 WebSocket ping에 응답하지 않아 약 40초마다 끊기던 문제를 수신 스레드 추가로 수정했다.
+- 아직 확인하지 않은 것: 실제 화재·연기 장면에서 이벤트가 MySQL에 `source=jetson-yolo`로 저장되는지, Jetson 재부팅 시 자동 실행
 
-- 이 Windows PC에는 Jetson 카메라와 CUDA가 없으므로 실제 장비 검증이 남아 있다.
-- Jetson에서 저장소를 clone/pull하고 아래 순서로 진행한다.
+아래는 처음부터 새 Jetson에 설치할 때의 참고 절차다.
 
 ```bash
 git clone https://github.com/GaeBalHyeon/GoghakCapstone.git
@@ -130,6 +137,7 @@ MIN_DETECTIONS=10
 
 ## 7. 관련 문서
 
+- `handoff/AI_HANDOFF_2026-09-29.md`: 2026-09-29 세션 결과, 남은 작업, AI 작업 요령
 - `JETSON_HANDOFF.md`: Jetson 상세 설정과 네트워크 규격
 - `WORK_LOG.md`: 전체 작업 이력
 - `MODEL_EVALUATION.md`: 모델 및 영상 평가 결과

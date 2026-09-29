@@ -124,3 +124,42 @@ PPT에 적힌 “20프레임 중 10회 이상 감지” 판정은 현재 `jetson
 - 각 영상 패널을 누르면 기존 감지 테스트의 대상 카메라가 선택됩니다.
 - 브라우저에서 배치도 상단과 하단을 확인해 네 영상 패널의 위치, 겹침, 자동 재생을 검증했습니다.
 
+
+## 12. Windows MySQL 운영 모드 전환 (2026-09-29)
+
+- MySQL 8 기본 인증 방식 때문에 PyMySQL 접속이 실패해 `cryptography==44.0.0`을 설치하고 `requirements.txt`에 추가했습니다.
+- 관리자 CMD에서 TCP 8000 방화벽 규칙을 추가하고 `configure_windows.bat`으로 MySQL DB, 계정, 테이블, `.env`, `EDGE_TOKEN`을 생성했습니다.
+- `run.bat` 실행 서버가 MySQL 모드(`/api/health` → `database: mysql`)로 동작함을 확인했습니다.
+- `diagnose_windows.bat` 9/9 PASS, Edge 통합 검사와 MySQL 통합 검사 모두 통과했습니다.
+- 남은 작업은 Jetson 실장 검증뿐입니다.
+
+## 13. Jetson 실장 연결 (2026-09-29)
+
+- 공유기 변경으로 Windows IP가 `192.168.0.223`이 되어 Jetson `.env`의 `WINDOWS_SERVER`를 이에 맞췄습니다.
+- LAN 탐색으로 Jetson(`192.168.0.117`, Ubuntu 22.04 SSH)을 찾고 Windows 전용 SSH 키를 등록했습니다.
+- Jetson의 기존 PyTorch는 cuDNN 8용 NVIDIA 빌드와 사용자 영역 CPU 빌드가 섞여 import가 실패하는 상태였습니다.
+- 시스템 패키지를 건드리지 않도록 `~/evguard/venv`를 만들고 jetson-ai-lab `jp6/cu126`의 CUDA `torch 2.8.0`을 설치해 `CUDA True, GPU Orin`을 확인했습니다.
+- `jetson_agent`를 `~/evguard/jetson_agent`로 복사했고 `best.pt` SHA-256 일치를 확인했습니다.
+- `diagnose.py` 8/8 PASS (CUDA, 카메라 640x480, 모델 클래스, Windows 서버, Edge WebSocket).
+- 에이전트가 서버 WebSocket ping에 응답하지 않아 약 40초마다 `Broken pipe`로 끊기는 문제를 발견해 `agent.py`에 수신 스레드를 추가했습니다.
+- 수정 후 CAM-01 `edge_online=True`, 추론 약 27 FPS, 서버 MJPEG 약 7 FPS가 연속 유지되는 것을 확인했습니다.
+
+## 14. Jetson 객체탐지 카메라 재가동 (2026-09-29)
+
+- Windows 유선 LAN `192.168.0.223/24`, Jetson `192.168.0.201/24`, 게이트웨이 `192.168.0.1`로 동일 공유기 연결을 확인했습니다.
+- Windows FastAPI 서버가 `0.0.0.0:8000`에서 이미 실행 중이며 `/api/health`가 MySQL 모드로 응답하는 것을 확인했습니다.
+- Jetson `~/evguard/run_agent.sh`를 백그라운드로 실행해 카메라 `0`과 `best.pt` 화재·연기 YOLO 추론을 시작했습니다.
+- Jetson 프로세스 PID는 실행 당시 `5293`이었으며 `CAM-01 edge_online=true`, 약 `29.9~30.0 FPS`를 확인했습니다.
+- Windows `/api/video_feed/CAM-01`에서 `multipart/x-mixed-replace` 응답과 실제 연속 JPEG 프레임을 확인했습니다.
+- 추가 유지 검사 후에도 프로세스와 영상 연결이 끊기지 않았습니다.
+- 홈페이지는 일반 브라우저에서 `http://127.0.0.1:8000`으로 접속합니다.
+
+## 15. 배치도 정렬·확대 화면·오경보 복구 개선
+
+- 카메라 좌표를 네 주차 구역의 실제 중심 좌표에 맞게 조정하고 CSS 변수로 전달해 반응형 배치가 되도록 변경했습니다.
+- 주차 구역 높이와 배치도 높이를 화면 크기에 맞춰 조정해 영상 패널이 구역 테두리 안에 들어가도록 했습니다.
+- 각 카메라 패널을 클릭하거나 키보드로 선택하면 큰 화면 모달이 열리도록 구현했습니다.
+- 이벤트 기록 삭제 시 모든 카메라의 일시 상태도 `normal`로 초기화하도록 서버를 수정했습니다.
+- Jetson에서 화재·연기가 완전히 사라지면 `normal` 메시지를 Windows로 보내도록 에이전트를 수정했습니다.
+- 활성 화재·연기 카메라가 없으면 홈페이지 경보 배너가 자동으로 닫히도록 수정했습니다.
+- 필요한 후속 기능을 우선순위별로 `FEATURE_ROADMAP.md`에 정리했습니다.
