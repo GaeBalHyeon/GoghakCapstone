@@ -85,7 +85,8 @@ cd /d C:\Users\Ria\Desktop\capstone\re_capstone
 - 실행: `~/evguard/run_agent.sh` (로그 `~/evguard/agent.log`), 중지: `~/evguard/stop_agent.sh`
 - `diagnose.py` 8/8 PASS, USB 카메라 `/dev/video0` 640x480, GPU 추론 약 27 FPS, 서버 MJPEG 약 7 FPS 수신 확인
 - `agent.py`가 서버의 WebSocket ping에 응답하지 않아 약 40초마다 끊기던 문제를 수신 스레드 추가로 수정했다.
-- 아직 확인하지 않은 것: 실제 화재·연기 장면에서 이벤트가 MySQL에 `source=jetson-yolo`로 저장되는지, Jetson 재부팅 시 자동 실행
+- 실제 화재 이벤트, 스냅샷, Telegram 전송을 확인했다.
+- `jetson_agent/install_autostart.sh`가 사용자 crontab에 부팅 자동 실행을 등록하며, 비정상 종료 시 5초 뒤 에이전트를 다시 실행한다.
 
 아래는 처음부터 새 Jetson에 설치할 때의 참고 절차다.
 
@@ -135,6 +136,7 @@ CLEAR_SECONDS=2.0
 - 두 `yolo11s.pt`는 서로 동일한 COCO 80클래스 기본 모델이며 화재 학습 모델이 아니다.
 - `run_video/python/cloudflared.exe`는 현재 구조에서 사용하지 않으며 Git에서 제외되어 있다.
 - 자동 시뮬레이션은 사용자가 직접 켤 때만 동작해야 한다.
+- Telegram은 네트워크 오류, HTTP 429·5xx에 한해 기본 최대 3회 재시도한다. HTTP 400 같은 설정 오류는 반복하지 않는다.
 
 ## 7. 관련 문서
 

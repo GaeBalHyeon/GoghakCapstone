@@ -90,6 +90,8 @@ python3 diagnose.py
 python3 agent.py
 ```
 
+재부팅 자동 실행은 `./install_autostart.sh`을 한 번 실행해 등록합니다. 부팅 20초 후 실행되고 프로세스가 비정상 종료되면 5초 후 다시 시작합니다. `crontab -l`과 `tail -f ~/evguard/agent.log`로 확인합니다.
+
 `.env` 예시:
 
 ```dotenv
@@ -153,6 +155,7 @@ ws://WINDOWS_IP:8000/ws/edge/CAM-01?token=EDGE_TOKEN
 9. 화재·연기 영상으로 이벤트 생성 확인
 10. MySQL 저장 확인
 11. Jetson 종료 시 홈페이지 오프라인 전환 확인
+12. `install_autostart.sh` 등록 후 재부팅하여 CAM-01 자동 재연결 확인
 
 ## 아직 장비에서 확인할 내용
 

@@ -5,6 +5,7 @@ import json
 import mimetypes
 import os
 import secrets
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -98,25 +99,39 @@ def send_telegram_alert(event: dict, snapshot_path: Path | None) -> Notification
     chat_id = os.getenv("TELEGRAM_CHAT_ID", "").strip()
     caption = _caption(event)
     base_url = f"https://api.telegram.org/bot{token}"
-    try:
-        if snapshot_path and snapshot_path.is_file():
-            _post_photo(
-                f"{base_url}/sendPhoto",
-                {"chat_id": chat_id, "caption": caption, "parse_mode": "HTML"},
-                snapshot_path,
+    max_attempts = min(max(int(os.getenv("TELEGRAM_MAX_ATTEMPTS", "3")), 1), 5)
+    retry_delays = (2, 5, 10, 20)
+    last_error = "Telegram 전송 실패"
+
+    for attempt in range(1, max_attempts + 1):
+        try:
+            if snapshot_path and snapshot_path.is_file():
+                _post_photo(
+                    f"{base_url}/sendPhoto",
+                    {"chat_id": chat_id, "caption": caption, "parse_mode": "HTML"},
+                    snapshot_path,
+                )
+            else:
+                _post_form(
+                    f"{base_url}/sendMessage",
+                    {"chat_id": chat_id, "text": caption, "parse_mode": "HTML"},
+                )
+            return NotificationResult(
+                status="sent",
+                notified_at=datetime.now().astimezone().isoformat(timespec="seconds"),
             )
-        else:
-            _post_form(
-                f"{base_url}/sendMessage",
-                {"chat_id": chat_id, "text": caption, "parse_mode": "HTML"},
-            )
-        return NotificationResult(
-            status="sent",
-            notified_at=datetime.now().astimezone().isoformat(timespec="seconds"),
-        )
-    except urllib.error.HTTPError as error:
-        return NotificationResult(status="failed", error=f"Telegram HTTP {error.code}")
-    except (urllib.error.URLError, TimeoutError) as error:
-        return NotificationResult(status="failed", error=f"Telegram connection error: {type(error).__name__}")
-    except Exception as error:
-        return NotificationResult(status="failed", error=f"Telegram error: {type(error).__name__}")
+        except urllib.error.HTTPError as error:
+            last_error = f"Telegram HTTP {error.code} ({attempt}/{max_attempts})"
+            retryable = error.code == 429 or error.code >= 500
+        except (urllib.error.URLError, TimeoutError) as error:
+            last_error = f"Telegram connection error: {type(error).__name__} ({attempt}/{max_attempts})"
+            retryable = True
+        except Exception as error:
+            last_error = f"Telegram error: {type(error).__name__} ({attempt}/{max_attempts})"
+            retryable = False
+
+        if not retryable or attempt >= max_attempts:
+            break
+        time.sleep(retry_delays[min(attempt - 1, len(retry_delays) - 1)])
+
+    return NotificationResult(status="failed", error=last_error)
