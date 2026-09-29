@@ -19,6 +19,7 @@ from app.database import backend_name, connect, init_db
 
 ROOT = Path(__file__).resolve().parent.parent
 STATIC = ROOT / "static"
+VIDEO_DIR = ROOT / "video"
 
 CAMERAS = [
     {"id": "CAM-01", "floor": "B1", "zone": "충전구역 A", "charger": "A-01~A-04", "x": 20, "y": 31},
@@ -143,6 +144,7 @@ async def lifespan(_: FastAPI):
 
 app = FastAPI(title="EV Fire Guard Local", version="1.0.0", lifespan=lifespan)
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
+app.mount("/videos", StaticFiles(directory=VIDEO_DIR), name="videos")
 
 
 @app.get("/", include_in_schema=False)
@@ -158,6 +160,15 @@ async def health():
 @app.get("/api/cameras")
 async def cameras():
     return list(camera_state.values())
+
+
+@app.get("/api/local-videos")
+async def local_videos():
+    videos = sorted(VIDEO_DIR.glob("*.mp4"), key=lambda path: path.name.lower())
+    return [
+        {"name": path.name, "url": f"/videos/{path.name}", "size": path.stat().st_size}
+        for path in videos
+    ]
 
 
 @app.post("/api/detections")

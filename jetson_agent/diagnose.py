@@ -7,6 +7,7 @@ import platform
 import sys
 import urllib.request
 from pathlib import Path
+from urllib.parse import quote
 
 from dotenv import load_dotenv
 
@@ -70,6 +71,21 @@ def main():
         checks.append(result("Windows server", data.get("status") == "ok", f"http://{server}, {data}"))
     except Exception as error:
         checks.append(result("Windows server", False, f"http://{server}: {error}"))
+
+    token = os.getenv("EDGE_TOKEN", "")
+    camera_id = os.getenv("CAMERA_ID", "CAM-01")
+    if not token or token == "change-this-edge-token":
+        checks.append(result("Edge token", False, "Set EDGE_TOKEN to the value from the Windows .env file"))
+    else:
+        try:
+            import websocket
+
+            ws_url = f"ws://{server}/ws/edge/{quote(camera_id)}?token={quote(token)}"
+            ws = websocket.create_connection(ws_url, timeout=4)
+            ws.close()
+            checks.append(result("Edge WebSocket", True, ws_url.split("?", 1)[0]))
+        except Exception as error:
+            checks.append(result("Edge WebSocket", False, repr(error)))
 
     print("=" * 48)
     print(f"Result: {sum(checks)}/{len(checks)} checks passed")

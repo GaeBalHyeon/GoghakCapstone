@@ -146,11 +146,12 @@ ws://WINDOWS_IP:8000/ws/edge/CAM-01?token=EDGE_TOKEN
 3. Jetson OpenCV 카메라 입력 확인
 4. `best.pt` 클래스 및 CUDA 확인
 5. Windows `run.bat` 실행
-6. Jetson `agent.py` 실행
-7. 홈페이지 카메라 카드가 `JETSON LIVE`로 바뀌는지 확인
-8. 화재·연기 영상으로 이벤트 생성 확인
-9. MySQL 저장 확인
-10. Jetson 종료 시 홈페이지 오프라인 전환 확인
+6. `python3 diagnose.py`에서 카메라, CUDA, 모델, HTTP, 토큰 인증 WebSocket이 모두 PASS인지 확인
+7. Jetson `agent.py` 실행
+8. 홈페이지 카메라 카드가 `JETSON LIVE`로 바뀌는지 확인
+9. 화재·연기 영상으로 이벤트 생성 확인
+10. MySQL 저장 확인
+11. Jetson 종료 시 홈페이지 오프라인 전환 확인
 
 ## 아직 장비에서 확인할 내용
 

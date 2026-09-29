@@ -92,3 +92,17 @@ PPT에 적힌 “20프레임 중 10회 이상 감지” 판정은 현재 `jetson
 - `영상 배포.bat`는 CMD에서 두 카메라 실행기를 시작하도록 변경했습니다.
 - 더 이상 사용하지 않는 `cloudflared.exe`는 Git 업로드 대상에서 제외했습니다.
 
+## 8. 실제 장비 연결 전 실행 경로 보강
+
+- 기존 안내와 호환되도록 `start_server.bat`을 추가했으며 내부적으로 실제 서버 실행기인 `run.bat`을 호출합니다.
+- Jetson `diagnose.py`가 HTTP 상태 확인뿐 아니라 `EDGE_TOKEN`을 사용한 실제 Edge WebSocket 인증 연결도 검사하도록 보강했습니다.
+- 따라서 Jetson 에이전트를 실행하기 전에 카메라, CUDA, 모델, Windows 서버, 토큰 인증 문제를 한 번에 구분할 수 있습니다.
+
+## 9. Windows 저장 영상과 Jetson 실시간 영상 분리
+
+- `video/*.mp4`는 Windows FastAPI가 `/videos` 경로로 직접 제공합니다.
+- 홈페이지에 저장 영상 전용 플레이어와 영상 선택 목록을 추가했습니다.
+- Windows 저장 영상은 재생용 자료이며 Jetson YOLO 입력이나 실시간 카메라인 것처럼 표시하지 않습니다.
+- 카메라 화면은 Jetson WebSocket에서 받은 YOLO 처리 영상만 `JETSON LIVE`로 표시합니다.
+- Jetson 미연결 카메라는 `OFFLINE`으로 표시하며 저장 영상이나 시뮬레이션 영상으로 대체하지 않습니다.
+
