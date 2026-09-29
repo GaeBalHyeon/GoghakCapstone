@@ -2,23 +2,23 @@ from __future__ import annotations
 
 import asyncio
 import json
+import os
 import random
-import sqlite3
 from contextlib import asynccontextmanager
 from datetime import datetime
 from pathlib import Path
 from typing import Literal
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse
+from fastapi.responses import FileResponse, StreamingResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
+
+from app.database import backend_name, connect, init_db
 
 
 ROOT = Path(__file__).resolve().parent.parent
 STATIC = ROOT / "static"
-DATA = ROOT / "data"
-DB_PATH = DATA / "ev_fire_guard.db"
 
 CAMERAS = [
     {"id": "CAM-01", "floor": "B1", "zone": "충전구역 A", "charger": "A-01~A-04", "x": 20, "y": 31},
@@ -28,9 +28,11 @@ CAMERAS = [
 ]
 
 camera_state = {
-    cam["id"]: {**cam, "status": "normal", "confidence": 0.0, "fps": 8.0, "updated_at": None}
+    cam["id"]: {**cam, "status": "normal", "confidence": 0.0, "fps": 0.0, "updated_at": None, "edge_online": False}
     for cam in CAMERAS
 }
+latest_frames: dict[str, bytes] = {}
+frame_versions: dict[str, int] = {}
 
 
 class DetectionRequest(BaseModel):
@@ -47,41 +49,6 @@ class ResolveRequest(BaseModel):
 class SettingsRequest(BaseModel):
     simulation_enabled: bool
     auto_event_interval: int = Field(default=45, ge=10, le=600)
-
-
-def connect() -> sqlite3.Connection:
-    con = sqlite3.connect(DB_PATH)
-    con.row_factory = sqlite3.Row
-    return con
-
-
-def init_db() -> None:
-    DATA.mkdir(exist_ok=True)
-    with connect() as con:
-        con.executescript(
-            """
-            CREATE TABLE IF NOT EXISTS events (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                camera_id TEXT NOT NULL,
-                floor TEXT NOT NULL,
-                zone TEXT NOT NULL,
-                charger TEXT NOT NULL,
-                event_type TEXT NOT NULL,
-                confidence REAL NOT NULL,
-                source TEXT NOT NULL,
-                detected_at TEXT NOT NULL,
-                resolved_at TEXT,
-                resolution_note TEXT
-            );
-            CREATE TABLE IF NOT EXISTS settings (
-                id INTEGER PRIMARY KEY CHECK (id = 1),
-                simulation_enabled INTEGER NOT NULL DEFAULT 0,
-                auto_event_interval INTEGER NOT NULL DEFAULT 45
-            );
-            INSERT OR IGNORE INTO settings(id, simulation_enabled, auto_event_interval)
-            VALUES (1, 0, 45);
-            """
-        )
 
 
 class ConnectionManager:
@@ -185,7 +152,7 @@ async def index():
 
 @app.get("/api/health")
 async def health():
-    return {"status": "ok", "mode": "local-simulation", "database": str(DB_PATH.name)}
+    return {"status": "ok", "mode": "edge-ready", "database": backend_name()}
 
 
 @app.get("/api/cameras")
@@ -210,7 +177,7 @@ async def events(limit: int = 100):
 @app.delete("/api/events")
 async def delete_events():
     with connect() as con:
-        count = con.execute("SELECT COUNT(*) FROM events").fetchone()[0]
+        count = con.execute("SELECT COUNT(*) AS count FROM events").fetchone()["count"]
         con.execute("DELETE FROM events")
     payload = {"kind": "events-cleared", "deleted": count}
     await manager.broadcast(payload)
@@ -261,4 +228,66 @@ async def websocket_endpoint(websocket: WebSocket):
             await websocket.receive_text()
     except WebSocketDisconnect:
         manager.disconnect(websocket)
+
+
+@app.websocket("/ws/edge/{camera_id}")
+async def edge_websocket(websocket: WebSocket, camera_id: str):
+    camera = camera_state.get(camera_id)
+    if not camera:
+        await websocket.close(code=4404, reason="Unknown camera")
+        return
+    expected_token = os.getenv("EDGE_TOKEN", "")
+    if expected_token and websocket.query_params.get("token") != expected_token:
+        await websocket.close(code=4401, reason="Invalid edge token")
+        return
+
+    await websocket.accept()
+    camera["edge_online"] = True
+    camera["updated_at"] = utc_now()
+    await manager.broadcast({"kind": "edge-status", "camera": camera})
+    try:
+        while True:
+            message = await websocket.receive()
+            if message.get("type") == "websocket.disconnect":
+                break
+            if message.get("bytes") is not None:
+                latest_frames[camera_id] = message["bytes"]
+                frame_versions[camera_id] = frame_versions.get(camera_id, 0) + 1
+                camera["updated_at"] = utc_now()
+                continue
+            if message.get("text"):
+                data = json.loads(message["text"])
+                camera["fps"] = round(float(data.get("fps", camera["fps"])), 1)
+                if data.get("kind") == "detection":
+                    await register_detection(
+                        DetectionRequest(
+                            camera_id=camera_id,
+                            event_type=data["event_type"],
+                            confidence=float(data.get("confidence", 0)),
+                            source="jetson-yolo",
+                        )
+                    )
+    except (WebSocketDisconnect, json.JSONDecodeError, KeyError, ValueError):
+        pass
+    finally:
+        camera["edge_online"] = False
+        camera["fps"] = 0.0
+        await manager.broadcast({"kind": "edge-status", "camera": camera})
+
+
+@app.get("/api/video_feed/{camera_id}")
+async def video_feed(camera_id: str):
+    get_camera(camera_id)
+
+    async def stream():
+        version = -1
+        while True:
+            current = frame_versions.get(camera_id, 0)
+            frame = latest_frames.get(camera_id)
+            if frame is not None and current != version:
+                version = current
+                yield b"--frame\r\nContent-Type: image/jpeg\r\n\r\n" + frame + b"\r\n"
+            await asyncio.sleep(0.04)
+
+    return StreamingResponse(stream(), media_type="multipart/x-mixed-replace; boundary=frame")
 

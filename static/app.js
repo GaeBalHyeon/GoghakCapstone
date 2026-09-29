@@ -14,9 +14,9 @@ function renderCameras() {
   $("smoke-count").textContent = state.cameras.filter(c => c.status === "smoke").length;
   $("camera-grid").innerHTML = state.cameras.map(c => `
     <article class="camera-card ${c.status}">
-      <div class="camera-feed"></div>
+      <div class="camera-feed ${c.edge_online ? "live" : "simulated"}">${c.edge_online ? `<img src="/api/video_feed/${c.id}" alt="${c.id} 실시간 YOLO 영상">` : ""}</div>
       <div class="camera-info"><div><strong>${c.id}</strong><span class="status ${c.status}">${labels[c.status]}</span></div>
-      <p>${c.floor} · ${c.zone} · ${c.fps.toFixed(1)} fps</p></div>
+      <p>${c.floor} · ${c.zone} · ${c.edge_online ? `Jetson 연결 · ${c.fps.toFixed(1)} fps` : "오프라인 / 시뮬레이션"}</p></div>
     </article>`).join("");
 
   document.querySelectorAll(".camera-marker").forEach(e => e.remove());
@@ -78,7 +78,7 @@ function connectWs() {
   const protocol = location.protocol === "https:" ? "wss" : "ws";
   const ws = new WebSocket(`${protocol}://${location.host}/ws`);
   ws.onopen = () => { $("connection").className = "connection online"; $("connection").innerHTML = "<span></span> 실시간 연결"; ws.send("ready"); };
-  ws.onmessage = async (message) => { const data = JSON.parse(message.data); if (["detection", "resolved", "events-cleared"].includes(data.kind)) { await load(); if (data.event) showAlarm(data.camera, data.event); } };
+  ws.onmessage = async (message) => { const data = JSON.parse(message.data); if (["detection", "resolved", "events-cleared", "edge-status"].includes(data.kind)) { await load(); if (data.event) showAlarm(data.camera, data.event); } };
   ws.onclose = () => { $("connection").className = "connection offline"; $("connection").innerHTML = "<span></span> 재연결 중"; setTimeout(connectWs, 2000); };
 }
 
