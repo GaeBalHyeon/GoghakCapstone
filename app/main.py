@@ -25,9 +25,9 @@ SNAPSHOT_DIR = ROOT / "data" / "snapshots"
 
 CAMERAS = [
     {"id": "CAM-01", "floor": "B1", "zone": "충전구역 A", "charger": "A-01~A-04", "x": 21.5, "y": 26},
-    {"id": "CAM-02", "floor": "B1", "zone": "충전구역 B", "charger": "B-01~B-04", "x": 78.5, "y": 26, "local_video": "/videos/1.mp4"},
+    {"id": "CAM-02", "floor": "B1", "zone": "충전구역 B", "charger": "B-01~B-04", "x": 21.5, "y": 74, "local_video": "/videos/1.mp4"},
     {"id": "CAM-03", "floor": "B1", "zone": "일반 주차구역", "charger": "-", "x": 78.5, "y": 74, "local_video": "/videos/2.mp4"},
-    {"id": "CAM-04", "floor": "B1", "zone": "출입구", "charger": "-", "x": 21.5, "y": 74, "local_video": "/videos/3.mp4"},
+    {"id": "CAM-04", "floor": "B1", "zone": "출입구", "charger": "-", "x": 78.5, "y": 26, "local_video": "/videos/3.mp4"},
 ]
 
 camera_state = {
