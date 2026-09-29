@@ -55,6 +55,9 @@ PPT는 기존 건물 안전 관제 시스템을 전기차 주차장에 특화한
 - 검증 시 Windows CPU에서 약 13.6 FPS, 화재 신뢰도 약 0.7499 확인
 - 에이전트 종료 후 카메라 오프라인 전환과 테스트 이벤트 정리 확인
 - 상세 결과를 `MODEL_EVALUATION.md`에 기록
+- MySQL 관리자 비밀번호를 숨김 입력으로 받아 DB, 계정, 테이블, `.env`, 랜덤 Edge 토큰을 생성하는 `configure_windows.bat` 추가
+- 기존 `.env` 자동 백업과 `.env.backup` Git 제외 처리
+- MySQL insert/select/delete를 확인하고 테스트 행을 정리하는 `tests/mysql_integration.py` 추가
 
 ## 4. 장비가 없는 환경에서의 처리
 

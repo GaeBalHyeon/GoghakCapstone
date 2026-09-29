@@ -24,7 +24,14 @@ GitHub에 현재 변경 내용을 업로드할 때는 `push.bat`을 실행합니
 
 서버는 `0.0.0.0:8000`에 바인딩되므로 같은 공유기의 Jetson에서도 접속할 수 있습니다. `network_check.bat`으로 Windows 내부 IP를 확인하고, 관리자 CMD에서 `allow_firewall_8000.bat`을 한 번 실행해 개인 네트워크 TCP 8000을 허용합니다.
 
-이 PC에는 MySQL 8.0 서비스가 설치되어 실행 중입니다. `.env.example`을 `.env`로 복사하고 비밀번호를 정한 뒤 `mysql_setup.sql`에도 같은 비밀번호를 입력하고 `setup_mysql.bat`을 실행합니다.
+이 PC에는 MySQL 8.0 서비스가 설치되어 실행 중입니다. `setup.bat` 실행 후 `configure_windows.bat`을 실행하면 MySQL 관리자 비밀번호를 숨김 입력으로 받아 DB, 애플리케이션 계정, 테이블, `.env`와 Edge 토큰을 자동 생성합니다. 기존 `.env`는 `.env.backup`으로 보관됩니다.
+
+```bat
+setup.bat
+configure_windows.bat
+.venv\Scripts\python.exe tests\mysql_integration.py
+run.bat
+```
 
 ## 구현 기능
 

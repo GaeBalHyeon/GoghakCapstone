@@ -62,16 +62,17 @@ Windows 방화벽에서는 개인 네트워크의 TCP 8000 포트만 허용합�
 
 ## Windows 설정
 
-`.env.example`을 `.env`로 복사하고 MySQL 및 Edge 토큰을 설정합니다.
+`setup.bat` 실행 후 `configure_windows.bat`을 실행합니다. MySQL 관리자 비밀번호는 화면에 표시되지 않으며, 도구가 DB, 애플리케이션 계정, 테이블, `.env`와 랜덤 Edge 토큰을 생성합니다.
 
 ```bat
-copy .env.example .env
-notepad .env
 setup.bat
-setup_mysql.bat
+configure_windows.bat
+.venv\Scripts\python.exe tests\mysql_integration.py
 allow_firewall_8000.bat
 run.bat
 ```
+
+생성된 Windows `.env`의 `EDGE_TOKEN` 값을 Jetson `jetson_agent/.env`에 복사합니다. `.env`와 `.env.backup`은 Git에 포함되지 않습니다.
 
 `allow_firewall_8000.bat`은 관리자 권한 CMD에서 한 번만 실행합니다. `run.bat`은 외부 장비 접속이 가능하도록 `0.0.0.0:8000`에서 서버를 엽니다.
 
