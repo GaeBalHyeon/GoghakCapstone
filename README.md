@@ -18,6 +18,8 @@ run.bat
 
 설치 스크립트는 이 PC의 Codex 내장 Python을 먼저 사용하며, 없으면 시스템 Python을 찾습니다. PowerShell용 `setup.ps1`, `run.ps1`도 보조 실행 파일로 유지했습니다.
 
+GitHub에 현재 변경 내용을 업로드할 때는 `push.bat`을 실행합니다. 이 PC의 Git이 CMD PATH에 없어도 프로젝트에 연결된 Git 실행 파일을 자동으로 사용합니다.
+
 브라우저에서 <http://127.0.0.1:8000>에 접속합니다. API 문서는 <http://127.0.0.1:8000/docs>에서 확인할 수 있습니다.
 
 ## 구현 기능
