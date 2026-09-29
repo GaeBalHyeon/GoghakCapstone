@@ -6,3 +6,4 @@ data/*.db
 .env.backup
 snapshots/
 
+run_video/python/cloudflared.exe
