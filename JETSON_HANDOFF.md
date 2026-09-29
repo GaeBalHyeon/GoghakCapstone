@@ -83,7 +83,9 @@ Jetson용 코드는 `jetson_agent` 폴더에 있습니다.
 
 ```bash
 cd jetson_agent
-python3 -m pip install -r requirements.txt
+chmod +x setup_jetson.sh
+./setup_jetson.sh
+python3 diagnose.py
 python3 agent.py
 ```
 
@@ -119,7 +121,7 @@ python3 -c "from ultralytics import YOLO; print(YOLO('best.pt').names)"
 python3 -c "import torch; print(torch.cuda.is_available()); print(torch.cuda.get_device_name(0) if torch.cuda.is_available() else 'CUDA unavailable')"
 ```
 
-클래스 이름이 다르면 `agent.py`의 `class_kind()`를 실제 모델에 맞게 수정합니다. JetPack의 CUDA용 PyTorch를 일반 CPU 패키지로 덮어쓰지 않도록 주의합니다.
+클래스 이름이 다르면 `agent.py`의 `class_kind()`를 실제 모델에 맞게 수정합니다. JetPack의 CUDA용 PyTorch를 일반 CPU 패키지로 덮어쓰지 않도록 주의합니다. `diagnose.py`의 출력 전문을 `WORK_LOG.md`에 기록하고 모든 항목이 PASS인지 확인합니다.
 
 ## 통신 규격
 
@@ -157,6 +159,15 @@ ws://WINDOWS_IP:8000/ws/edge/CAM-01?token=EDGE_TOKEN
 - CUDA/TensorRT 추론 속도
 - 실제 Windows와 Jetson 내부 IP
 - 실제 영상에 맞는 신뢰도와 프레임 기준
+
+## Windows 사전 검사 결과
+
+- `video/1.mp4`: 1274×720, 24 FPS, 544프레임, 약 22.7초
+- `video/2.mp4`: 1280×720, 약 15 FPS, 640프레임, 약 42.5초
+- `video/3.mp4`: 626×360, 24 FPS, 544프레임, 약 22.7초
+- Windows 격리 환경의 CPU PyTorch는 `c10.dll` 초기화 오류로 모델 실행에 실패했습니다.
+- 모델 클래스는 아카이브 메타데이터로 별도 확인했으며 `{0: fire, 1: smoke}`입니다.
+- 최종 추론 검증은 Jetson의 CUDA PyTorch 환경에서 수행해야 합니다.
 
 검증하지 않은 항목을 작동 완료로 기록하지 않습니다.
 

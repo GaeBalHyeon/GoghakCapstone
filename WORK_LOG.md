@@ -45,6 +45,10 @@ PPT는 기존 건물 안전 관제 시스템을 전기차 주차장에 특화한
 - 확인된 모델을 `jetson_agent/best.pt`에 포함하고 SHA-256 해시 기록
 - Jetson 서버 연결이 끊긴 동안 확정된 이벤트가 유실되지 않도록 대기 큐 추가
 - 영상 파일 입력이 끝나면 처음부터 반복 재생하도록 Jetson 에이전트 보완
+- Windows에서 테스트 영상 3개의 해상도, FPS, 프레임 수와 재생 시간 확인
+- Windows CPU PyTorch의 `c10.dll` 초기화 오류를 확인해 실제 추론 검증 대상을 Jetson CUDA 환경으로 구분
+- JetPack의 CUDA PyTorch와 OpenCV를 보존하는 `setup_jetson.sh` 추가
+- CUDA, 카메라, 모델 클래스, Windows 서버 연결을 점검하는 `jetson_agent/diagnose.py` 추가
 
 ## 4. 장비가 없는 환경에서의 처리
 

@@ -10,10 +10,17 @@ Jetson에 연결된 카메라 영상을 YOLO로 분석한 뒤, 박스가 그려�
 4. `WINDOWS_SERVER`에 Windows PC의 내부 IP와 포트 8000을 입력합니다.
 5. Windows 프로젝트의 `.env`와 같은 `EDGE_TOKEN`을 입력합니다.
 
+JetPack의 CUDA PyTorch와 OpenCV를 보존하는 설치 스크립트를 사용합니다.
+
 ```bash
-python3 -m pip install -r requirements.txt
+chmod +x setup_jetson.sh
+./setup_jetson.sh
+nano .env
+python3 diagnose.py
 python3 agent.py
 ```
+
+`diagnose.py`에서 CUDA, 카메라, 모델 클래스와 Windows 서버 연결이 모두 PASS인지 확인한 뒤 에이전트를 실행합니다.
 
 USB 카메라는 `CAMERA_SOURCE=0`, RTSP 카메라는 `CAMERA_SOURCE=rtsp://...` 형식으로 설정합니다. 모델 클래스 이름에는 `fire` 또는 `smoke`가 포함되어야 합니다.
 
