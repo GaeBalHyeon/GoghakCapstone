@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0a0a0a">
-  <title>EV Fire Guard</title><link rel="stylesheet" href="/static/style.css?v=20260929-camera-wall">
+  <title>EV Fire Guard</title><link rel="stylesheet" href="/static/style.css?v=20260929-mobile-camera-grid">
 </head>
 <body>
 <div class="app-shell">
@@ -54,6 +54,6 @@
   <div class="camera-modal-head"><div><p class="overline">DETECTION CONTROL</p><h2 id="test-control-title">감지 테스트</h2><p>카메라별 경보 흐름과 자동 시뮬레이션을 검증합니다.</p></div><button id="test-control-close" class="modal-close" aria-label="감지 테스트 닫기">×</button></div>
   <div class="test-control-body"><div class="field"><label for="camera-select">대상 카메라</label><select id="camera-select"></select></div><div class="scenario-buttons"><button class="scenario fire-action" data-event="fire"><span>화재</span><small>위험 이벤트 발생</small></button><button class="scenario smoke-action" data-event="smoke"><span>연기</span><small>의심 이벤트 발생</small></button><button class="scenario normal-action" data-event="normal"><span>정상 복귀</span><small>선택 카메라 초기화</small></button></div><div class="control-divider"></div><label class="switch-row" for="auto-sim"><span><strong>자동 시뮬레이션</strong><small>설정한 간격으로 이벤트 생성</small></span><input id="auto-sim" type="checkbox"><i></i></label><div class="field inline-field"><label for="interval">이벤트 간격</label><div><input id="interval" type="number" min="10" max="600" value="45"><span>초</span></div></div><button id="save-settings" class="primary-button">설정 저장</button></div>
 </dialog>
-<audio id="alarm-audio" loop></audio><script src="/static/app.js?v=20260929-camera-wall"></script>
+<audio id="alarm-audio" loop></audio><script src="/static/app.js?v=20260929-mobile-camera-grid"></script>
 </body></html>
 
