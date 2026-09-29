@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#101214">
+  <title>EV Fire Guard</title><link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<div class="app-shell">
+  <aside class="sidebar">
+    <a class="brand" href="#"><span class="brand-mark">E</span><span><strong>EV Fire Guard</strong><small>Local control</small></span></a>
+    <nav aria-label="주 메뉴">
+      <a class="nav-item active" href="#overview"><span class="nav-icon">⌂</span>관제 현황</a>
+      <a class="nav-item" href="#cameras"><span class="nav-icon">▣</span>카메라</a>
+      <a class="nav-item" href="#events"><span class="nav-icon">≡</span>이벤트 기록</a>
+    </nav>
+    <div class="sidebar-foot"><span class="environment-dot"></span><div><strong>로컬 환경</strong><small>장비 시뮬레이션</small></div></div>
+  </aside>
+  <div class="page">
+    <header class="topbar"><div><p class="breadcrumb">전기차 주차장 / 지하 1층</p><h1>안전 관제</h1></div><div id="connection" class="connection offline"><span></span>연결 중</div></header>
+    <main>
+      <section id="alarm" class="alarm hidden" role="alert"><span class="alarm-symbol">!</span><div><strong id="alarm-title">화재 감지</strong><p id="alarm-text"></p></div><button id="alarm-close" class="quiet-button">경보 닫기</button></section>
+      <section id="overview" class="status-strip" aria-label="관제 요약">
+        <div class="status-primary"><span class="live-indicator"></span><div><strong>시스템 정상 운영 중</strong><p>4개 카메라의 상태를 실시간으로 확인합니다.</p></div></div>
+        <dl><div><dt>관제 카메라</dt><dd id="camera-count">4</dd></div><div><dt>활성 화재</dt><dd id="fire-count">0</dd></div><div><dt>연기 의심</dt><dd id="smoke-count">0</dd></div><div><dt>오늘 이벤트</dt><dd id="event-count">0</dd></div></dl>
+      </section>
+      <section class="section-heading"><div><p class="overline">LIVE OVERVIEW</p><h2>지하 1층 현황</h2></div><p>카메라 위치를 선택하면 테스트 대상을 변경할 수 있습니다.</p></section>
+      <section class="workspace">
+        <article class="surface map-surface">
+          <div class="surface-head"><div><h3>주차장 배치도</h3><p>충전구역과 카메라 상태</p></div><div class="legend"><span class="normal-key">정상</span><span class="smoke-key">연기</span><span class="fire-key">화재</span></div></div>
+          <div class="floor-map" id="floor-map"><div class="map-label">B1 · NORTH</div><div class="lane"><span>차량 통행로</span></div><div class="space a"><strong>충전구역 A</strong><small>A-01 – A-04</small></div><div class="space b"><strong>충전구역 B</strong><small>B-01 – B-04</small></div><div class="space c"><strong>일반 주차구역</strong><small>C-01 – C-08</small></div><div class="space d"><strong>출입구</strong><small>차량 진입 / 진출</small></div></div>
+        </article>
+        <aside class="surface control-surface">
+          <div class="surface-head"><div><h3>감지 테스트</h3><p>장비 없이 관제 흐름을 검증합니다.</p></div></div>
+          <div class="field"><label for="camera-select">대상 카메라</label><select id="camera-select"></select></div>
+          <div class="scenario-buttons"><button class="scenario fire-action" data-event="fire"><span>화재</span><small>위험 이벤트 발생</small></button><button class="scenario smoke-action" data-event="smoke"><span>연기</span><small>의심 이벤트 발생</small></button><button class="scenario normal-action" data-event="normal"><span>정상 복귀</span><small>선택 카메라 초기화</small></button></div>
+          <div class="control-divider"></div>
+          <label class="switch-row" for="auto-sim"><span><strong>자동 시뮬레이션</strong><small>설정한 간격으로 이벤트 생성</small></span><input id="auto-sim" type="checkbox"><i></i></label>
+          <div class="field inline-field"><label for="interval">이벤트 간격</label><div><input id="interval" type="number" min="10" max="600" value="45"><span>초</span></div></div>
+          <button id="save-settings" class="primary-button">설정 저장</button>
+        </aside>
+      </section>
+      <section id="cameras" class="content-section"><div class="section-heading compact"><div><p class="overline">CAMERAS</p><h2>카메라 상태</h2></div><p>실제 장비 연결 전 시뮬레이션 화면입니다.</p></div><div id="camera-grid" class="camera-grid"></div></section>
+      <section id="events" class="content-section surface log-surface"><div class="surface-head"><div><h3>감지 이벤트</h3><p>발생 순서와 관리자 확인 상태</p></div><div class="table-actions"><button id="refresh" class="quiet-button">새로고침</button><button id="delete-events" class="danger-button">기록 삭제</button></div></div><div class="table-wrap"><table><thead><tr><th>감지 시각</th><th>카메라</th><th>구역</th><th>유형</th><th>신뢰도</th><th>상태</th><th></th></tr></thead><tbody id="event-table"></tbody></table></div></section>
+    </main>
+  </div>
+</div>
+<audio id="alarm-audio" loop></audio><script src="/static/app.js"></script>
+</body></html>
+
