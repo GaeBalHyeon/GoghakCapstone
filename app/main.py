@@ -32,9 +32,17 @@ CAMERAS = [
 ]
 
 camera_state = {
-    cam["id"]: {**cam, "status": "normal", "confidence": 0.0, "fps": 0.0, "updated_at": None, "edge_online": False}
+    cam["id"]: {
+        **cam, "status": "normal", "confidence": 0.0, "fps": 0.0, "updated_at": None, "edge_online": False,
+        # Vehicle count from the Jetson COCO model. None means "no vehicle data for this camera".
+        "vehicle_count": None, "vehicle_types": {}, "vehicle_updated_at": None,
+    }
     for cam in CAMERAS
 }
+
+
+def clear_vehicle_state(camera: dict) -> None:
+    camera.update(vehicle_count=None, vehicle_types={}, vehicle_updated_at=None)
 charging_control_state = {
     cam["id"]: {
         "camera_id": cam["id"],
@@ -128,12 +136,12 @@ async def register_detection(req: DetectionRequest) -> dict:
             cursor = con.execute(
                 """
                 INSERT INTO events(camera_id, floor, zone, charger, event_type,
-                                   confidence, source, detected_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                                   confidence, source, detected_at, vehicle_count)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     camera["id"], camera["floor"], camera["zone"], camera["charger"],
-                    req.event_type, req.confidence, req.source, now,
+                    req.event_type, req.confidence, req.source, now, camera["vehicle_count"],
                 ),
             )
             event_id = cursor.lastrowid
@@ -197,6 +205,7 @@ async def register_detection(req: DetectionRequest) -> dict:
             "notification_status": "pending" if telegram_configured() else "disabled",
             "notification_error": None,
             "notified_at": None,
+            "vehicle_count": camera["vehicle_count"],
             **cutoff,
         }
         with connect() as con:
@@ -275,6 +284,7 @@ async def camera_watchdog() -> None:
             if stale and not edge_offline_alerted.get(camera_id, False):
                 edge_offline_alerted[camera_id] = True
                 camera.update(edge_online=False, fps=0.0)
+                clear_vehicle_state(camera)
                 await manager.broadcast({"kind": "edge-status", "camera": camera})
                 asyncio.create_task(deliver_camera_status_notification(dict(camera), recovered=False))
 
@@ -466,6 +476,15 @@ async def edge_websocket(websocket: WebSocket, camera_id: str):
             if message.get("text"):
                 data = json.loads(message["text"])
                 camera["fps"] = round(float(data.get("fps", camera["fps"])), 1)
+                if data.get("kind") == "vehicle":
+                    count = max(int(data.get("count", 0)), 0)
+                    types = {str(k): int(v) for k, v in (data.get("types") or {}).items()}
+                    changed = count != camera["vehicle_count"]
+                    camera.update(vehicle_count=count, vehicle_types=types, vehicle_updated_at=utc_now())
+                    # Only push to dashboards when the count changes; the dashboard reloads on each message.
+                    if changed:
+                        await manager.broadcast({"kind": "vehicle-status", "camera": camera})
+                    continue
                 if data.get("kind") == "detection":
                     await register_detection(
                         DetectionRequest(
@@ -475,13 +494,14 @@ async def edge_websocket(websocket: WebSocket, camera_id: str):
                             source="jetson-yolo",
                         )
                     )
-    except (WebSocketDisconnect, json.JSONDecodeError, KeyError, ValueError):
+    except (WebSocketDisconnect, json.JSONDecodeError, KeyError, ValueError, TypeError, AttributeError):
         pass
     finally:
         edge_connections[camera_id] = max(edge_connections.get(camera_id, 1) - 1, 0)
         camera["edge_online"] = edge_connections[camera_id] > 0
         if not camera["edge_online"]:
             camera["fps"] = 0.0
+            clear_vehicle_state(camera)
         await manager.broadcast({"kind": "edge-status", "camera": camera})
 
 

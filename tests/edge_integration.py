@@ -70,15 +70,20 @@ async def main():
         async with websockets.connect(WS) as socket:
             await socket.send(JPEG)
             await socket.send(json.dumps({"kind": "heartbeat", "fps": 7.8}))
+            await socket.send(json.dumps({"kind": "vehicle", "count": 2, "types": {"car": 1, "truck": 1}, "fps": 7.8}))
             await socket.send(json.dumps({"kind": "detection", "event_type": "fire", "confidence": 0.93, "fps": 7.8}))
             await asyncio.sleep(0.2)
             cameras = await asyncio.to_thread(get_json, "/api/cameras")
             camera = next(item for item in cameras if item["id"] == "CAM-01")
             assert camera["edge_online"] is True
             assert camera["fps"] > 0
+            assert camera["vehicle_count"] == 2
+            assert camera["vehicle_types"] == {"car": 1, "truck": 1}
+            assert all(item["vehicle_count"] is None for item in cameras if item["id"] != "CAM-01")
             events = await asyncio.to_thread(get_json, "/api/events")
             test_event = next(event for event in events if event["source"] == "jetson-yolo" and event["event_type"] == "fire")
             event_id = test_event["id"]
+            assert test_event["vehicle_count"] == 2
             assert test_event["snapshot_url"]
             status, content_type, snapshot = await asyncio.to_thread(get_bytes, test_event["snapshot_url"])
             assert status == 200 and content_type == "image/jpeg" and snapshot == JPEG
@@ -90,7 +95,9 @@ async def main():
         camera = next(item for item in cameras if item["id"] == "CAM-01")
         assert camera["edge_online"] is jetson_was_online
         assert camera["status"] == "normal"
-        print("Live feed, snapshot persistence, local videos, notification state, and disconnect checks passed.")
+        if not jetson_was_online:
+            assert camera["vehicle_count"] is None
+        print("Live feed, vehicle count, snapshot persistence, local videos, notification state, and disconnect checks passed.")
     finally:
         if event_id is not None:
             delete_test_event(event_id)

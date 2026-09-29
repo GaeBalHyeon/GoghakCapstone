@@ -26,6 +26,15 @@ CONFIRM_SECONDS = float(os.getenv("CONFIRM_SECONDS", "3.0"))
 MISS_TOLERANCE_SECONDS = float(os.getenv("MISS_TOLERANCE_SECONDS", "0.6"))
 CLEAR_SECONDS = float(os.getenv("CLEAR_SECONDS", "2.0"))
 
+# Vehicle detection uses a pretrained COCO model, so no extra training is needed.
+VEHICLE_DETECTION = os.getenv("VEHICLE_DETECTION", "1").strip().lower() in ("1", "true", "yes", "on")
+VEHICLE_MODEL_PATH = os.getenv("VEHICLE_MODEL_PATH", "yolo11n.pt")
+VEHICLE_CONFIDENCE = float(os.getenv("VEHICLE_CONFIDENCE", "0.4"))
+VEHICLE_EVERY_N_FRAMES = max(int(os.getenv("VEHICLE_EVERY_N_FRAMES", "3")), 1)
+VEHICLE_REPORT_SECONDS = 2.0
+VEHICLE_CLASSES = {"car": "승용차", "truck": "트럭", "bus": "버스", "motorcycle": "오토바이"}
+VEHICLE_COLOR = (255, 170, 0)  # BGR: blue boxes, distinct from fire/smoke boxes
+
 
 def camera_source():
     raw = os.getenv("CAMERA_SOURCE", "0")
@@ -64,8 +73,51 @@ def connect_websocket():
     return ws
 
 
+def load_vehicle_model():
+    if not VEHICLE_DETECTION:
+        return None
+    try:
+        vehicle_model = YOLO(VEHICLE_MODEL_PATH)
+    except Exception as error:
+        # Fire detection must keep working even if the vehicle model is unavailable.
+        print(f"차량 감지 모델을 불러오지 못해 차량 감지를 끕니다: {error}")
+        return None
+    class_ids = [cid for cid, name in vehicle_model.names.items() if str(name) in VEHICLE_CLASSES]
+    if not class_ids:
+        print("차량 감지 모델에 car/truck/bus/motorcycle 클래스가 없어 차량 감지를 끕니다.")
+        return None
+    print(f"차량 감지 사용: {VEHICLE_MODEL_PATH}, {VEHICLE_EVERY_N_FRAMES}프레임마다 추론")
+    return vehicle_model, class_ids
+
+
+def detect_vehicles(vehicle, frame):
+    vehicle_model, class_ids = vehicle
+    result = vehicle_model.predict(frame, conf=VEHICLE_CONFIDENCE, classes=class_ids, verbose=False)[0]
+    boxes = []
+    for box in result.boxes:
+        name = str(vehicle_model.names[int(box.cls[0])])
+        x1, y1, x2, y2 = (int(v) for v in box.xyxy[0].tolist())
+        boxes.append((name, float(box.conf[0]), (x1, y1, x2, y2)))
+    return boxes
+
+
+def draw_vehicles(image, boxes):
+    for name, confidence, (x1, y1, x2, y2) in boxes:
+        cv2.rectangle(image, (x1, y1), (x2, y2), VEHICLE_COLOR, 2)
+        cv2.putText(image, f"{name} {confidence:.2f}", (x1, max(y1 - 6, 14)), cv2.FONT_HERSHEY_SIMPLEX, .5, VEHICLE_COLOR, 2)
+    label = f"VEHICLE {len(boxes)}"
+    (width, _), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, .65, 2)
+    cv2.putText(image, label, (image.shape[1] - width - 16, 28), cv2.FONT_HERSHEY_SIMPLEX, .65, VEHICLE_COLOR, 2)
+
+
 def main():
     model = YOLO(MODEL_PATH)
+    vehicle = load_vehicle_model()
+    vehicle_boxes = []
+    recent_vehicle_counts = []
+    reported_vehicle_count = None
+    last_vehicle_report = 0.0
+    frame_index = 0
     capture = cv2.VideoCapture(camera_source())
     if not capture.isOpened():
         raise RuntimeError(f"카메라를 열 수 없습니다: {camera_source()}")
@@ -96,6 +148,23 @@ def main():
                 kind = class_kind(str(model.names[int(box.cls[0])]))
                 if kind:
                     seen[kind] = max(seen[kind], float(box.conf[0]))
+
+            frame_index += 1
+            if vehicle and frame_index % VEHICLE_EVERY_N_FRAMES == 0:
+                vehicle_boxes = detect_vehicles(vehicle, frame)
+                # Use the max of the last few inferences so one missed frame does not flicker the count.
+                recent_vehicle_counts = (recent_vehicle_counts + [len(vehicle_boxes)])[-3:]
+                vehicle_count = max(recent_vehicle_counts)
+                vehicle_now = time.perf_counter()
+                if vehicle_count != reported_vehicle_count or vehicle_now - last_vehicle_report >= VEHICLE_REPORT_SECONDS:
+                    types = {}
+                    for name, _, _ in vehicle_boxes:
+                        types[name] = types.get(name, 0) + 1
+                    # Only the latest vehicle status matters, so drop older unsent ones.
+                    pending_events[:] = [item for item in pending_events if item.get("kind") != "vehicle"]
+                    pending_events.append({"kind": "vehicle", "count": vehicle_count, "types": types, "fps": measured_fps})
+                    reported_vehicle_count = vehicle_count
+                    last_vehicle_report = vehicle_now
 
             fps_frames += 1
             elapsed = time.perf_counter() - fps_started
@@ -138,6 +207,8 @@ def main():
                 continue
             last_sent = now
             annotated = result.plot()
+            if vehicle:
+                draw_vehicles(annotated, vehicle_boxes)
             cv2.putText(annotated, f"{CAMERA_ID}  {measured_fps:.1f} FPS", (16, 28), cv2.FONT_HERSHEY_SIMPLEX, .65, (255, 255, 255), 2)
             verifying = [
                 (kind, min(detection_now - started, CONFIRM_SECONDS))

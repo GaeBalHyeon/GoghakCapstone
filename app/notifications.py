@@ -52,6 +52,10 @@ def _caption(event: dict) -> str:
             f"처리 시간: {int(event['cutoff_response_ms'])}ms",
             "상태: SIMULATION · 실제 충전기 제어 아님",
         ]
+    vehicle_count = event.get("vehicle_count")
+    if vehicle_count is not None:
+        # Insert right after the location line.
+        lines.insert(4, f"🚗 현장 차량: <b>{int(vehicle_count)}대</b>" if vehicle_count else "🚗 현장 차량: 감지되지 않음")
     return "\n".join(lines)
 
 

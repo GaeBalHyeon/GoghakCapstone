@@ -117,6 +117,7 @@ def init_db() -> None:
                 ("cutoff_requested_at", "VARCHAR(40) NULL"),
                 ("cutoff_completed_at", "VARCHAR(40) NULL"),
                 ("cutoff_response_ms", "INT NULL"),
+                ("vehicle_count", "INT NULL"),
             ):
                 if not con.execute("SHOW COLUMNS FROM events LIKE ?", (name,)).fetchone():
                     con.execute(f"ALTER TABLE events ADD COLUMN {name} {definition}")
@@ -160,6 +161,8 @@ def init_db() -> None:
                     con.execute(f"ALTER TABLE events ADD COLUMN {name} TEXT")
             if "cutoff_response_ms" not in existing:
                 con.execute("ALTER TABLE events ADD COLUMN cutoff_response_ms INTEGER")
+            if "vehicle_count" not in existing:
+                con.execute("ALTER TABLE events ADD COLUMN vehicle_count INTEGER")
 
 
 def backend_name() -> str:

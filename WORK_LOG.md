@@ -307,3 +307,15 @@ PPT는 기존 건물 안전 관제 시스템을 전기차 주차장에 특화한
 
 - 프로젝트 목표, Windows·Jetson 구조, 현재 구현 상태, 시연 파일의 절대 경로, 시연 순서, 네트워크 점검, 보안 주의사항, 알려진 제한과 후속 과제를 `PROJECT_HANDOFF.md` 한 파일로 통합했습니다.
 - 기존 인수인계 문서에는 초기 단계 정보가 남아 있으므로 `PROJECT_HANDOFF.md`와 최신 Git 커밋을 우선하도록 안내를 추가했습니다.
+
+## 차량 감지 표시 (2026-09-29)
+
+- 추가 학습 없이 COCO 사전학습 모델 `yolo11n.pt`로 car·truck·bus·motorcycle을 감지합니다. 화재·연기는 기존 `best.pt`를 그대로 씁니다.
+- Jetson `agent.py`: 3프레임마다 차량 추론, 파란 박스와 `VEHICLE N` 표시, 차량 수가 바뀌거나 2초마다 `{"kind":"vehicle","count","types"}` 전송. 최근 3회 추론의 최댓값을 써서 깜빡임을 줄였습니다.
+- 모델을 못 불러오면 차량 감지만 끄고 화재 감지는 계속 동작합니다. `.env`의 `VEHICLE_DETECTION=0`으로 끌 수 있습니다.
+- 서버: 카메라 상태에 `vehicle_count`, `vehicle_types` 추가, 수가 바뀔 때만 `vehicle-status` 브로드캐스트, Jetson 연결이 끊기면 차량 정보 초기화.
+- DB: `events.vehicle_count` 컬럼 추가(SQLite·MySQL 자동 추가). 화재·연기 이벤트에 당시 차량 수를 저장합니다.
+- 화면: CAM-01 영상 좌상단 차량 배지, 충전 안전 패널의 충전구역 옆 차량 수, 이벤트 로그 구역 칸, 경보 배너 문구에 표시합니다.
+- 텔레그램: 화재·연기 알림에 `🚗 현장 차량: N대` 줄을 추가했습니다.
+- 검증: `tests/edge_integration.py`에 차량 메시지 검사 추가 후 통과, `tests/mysql_integration.py` 통과. Jetson 실측 추론 약 26 FPS(추가 전 약 27~30), 서버 MJPEG 약 7 FPS 유지, 샘플 사진에서 버스 0.94 감지(41ms).
+- Jetson 주소가 `192.168.0.201`로 바뀌어 있었습니다. Jetson `.env`는 `WINDOWS_SERVER=DESKTOP-TCULRT5.local:8000`을 사용 중이며, 에이전트는 `@reboot` cron의 `autostart_agent.sh`로 실행됩니다. 이전 `agent.py`는 Jetson에 `agent.py.bak-before-vehicle`로 백업했습니다.

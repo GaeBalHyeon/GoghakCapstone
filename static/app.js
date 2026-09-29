@@ -3,6 +3,11 @@ const $ = (id) => document.getElementById(id);
 
 const labels = { fire: "화재", smoke: "연기", normal: "정상" };
 const notificationLabels = { pending: "전송 중", sent: "전송 완료", failed: "전송 실패", disabled: "사용 안 함" };
+const vehicleTypeLabels = { car: "승용차", truck: "트럭", bus: "버스", motorcycle: "오토바이" };
+// vehicle_count is null when the camera has no vehicle data (local videos, Jetson offline).
+const hasVehicleData = (item) => item && item.vehicle_count !== null && item.vehicle_count !== undefined;
+const vehicleText = (count) => count > 0 ? `차량 ${count}대` : "차량 없음";
+const vehicleTypesText = (types = {}) => Object.entries(types).map(([name, count]) => `${vehicleTypeLabels[name] || name} ${count}`).join(" · ");
 const api = async (url, options = {}) => {
   const res = await fetch(url, { headers: { "Content-Type": "application/json" }, ...options });
   if (!res.ok) throw new Error(await res.text());
@@ -41,7 +46,10 @@ function renderCameras() {
     const updated = c.updated_at ? new Date(c.updated_at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "로컬 재생";
     const analysis = c.edge_online ? "AI 분석 중" : c.local_video ? "관제 재생" : "연결 대기";
     const metric = c.edge_online ? `${c.fps.toFixed(1)} FPS` : `${Math.round(c.confidence * 100)}%`;
-    marker.innerHTML = `<div class="map-camera-feed ${feedClass}">${media}<span class="feed-badge">${c.edge_online ? "JETSON LIVE" : c.local_video ? "LOCAL LIVE" : "OFFLINE"}</span><div class="feed-telemetry"><span>${analysis}</span><b>${metric}</b></div></div><div class="map-camera-meta"><div><strong>${c.id} · ${c.zone}</strong><small>${updated} · ${labels[c.status]}</small></div><button class="camera-expand" type="button" aria-label="${c.id} 크게 보기">↗</button></div>`;
+    const vehicleChip = c.edge_online && hasVehicleData(c)
+      ? `<span class="vehicle-chip ${c.vehicle_count > 0 ? "present" : "empty"}" title="${vehicleTypesText(c.vehicle_types)}">🚗 ${vehicleText(c.vehicle_count)}</span>`
+      : "";
+    marker.innerHTML = `<div class="map-camera-feed ${feedClass}">${media}${vehicleChip}<span class="feed-badge">${c.edge_online ? "JETSON LIVE" : c.local_video ? "LOCAL LIVE" : "OFFLINE"}</span><div class="feed-telemetry"><span>${analysis}</span><b>${metric}</b></div></div><div class="map-camera-meta"><div><strong>${c.id} · ${c.zone}</strong><small>${updated} · ${labels[c.status]}</small></div><button class="camera-expand" type="button" aria-label="${c.id} 크게 보기">↗</button></div>`;
     marker.tabIndex = 0;
     marker.setAttribute("role", "button");
     marker.setAttribute("aria-label", `${c.id} ${c.zone} 확대 보기`);
@@ -90,7 +98,9 @@ function renderChargingControls() {
   const controls = state.chargingControls.filter(control => control.status !== "not_applicable");
   $("charging-control-list").innerHTML = controls.map(control => {
     const blocked = control.status === "blocked";
-    return `<div class="charging-control-row ${blocked ? "blocked" : "available"}"><span></span><div><strong>${control.charger}</strong><small>${control.zone}</small></div><b>${blocked ? `차단 완료 · ${control.response_ms}ms` : "충전 가능"}</b></div>`;
+    const camera = state.cameras.find(item => item.id === control.camera_id);
+    const occupancy = camera?.edge_online && hasVehicleData(camera) ? ` · 🚗 ${vehicleText(camera.vehicle_count)}` : "";
+    return `<div class="charging-control-row ${blocked ? "blocked" : "available"}"><span></span><div><strong>${control.charger}</strong><small>${control.zone}${occupancy}</small></div><b>${blocked ? `차단 완료 · ${control.response_ms}ms` : "충전 가능"}</b></div>`;
   }).join("") || '<div class="charging-control-empty">등록된 충전구역 없음</div>';
 }
 
@@ -131,7 +141,8 @@ function openCameraModal(camera) {
       : '<div class="modal-offline"><span></span><strong>카메라 연결 대기</strong></div>';
   $("modal-camera-title").textContent = `${camera.id} · ${camera.zone}`;
   $("modal-camera-description").textContent = `${camera.floor} · ${camera.charger}`;
-  $("modal-camera-source").textContent = source + (camera.edge_online ? ` · ${camera.fps.toFixed(1)} FPS` : "");
+  const vehicles = camera.edge_online && hasVehicleData(camera) ? ` · ${vehicleText(camera.vehicle_count)}` : "";
+  $("modal-camera-source").textContent = source + (camera.edge_online ? ` · ${camera.fps.toFixed(1)} FPS` : "") + vehicles;
   $("modal-camera-status").className = `status ${camera.status}`;
   $("modal-camera-status").textContent = labels[camera.status];
   $("camera-modal-feed").innerHTML = media;
@@ -150,7 +161,7 @@ function renderEvents() {
   $("event-count").textContent = state.events.filter(e => new Date(e.detected_at).toDateString() === new Date().toDateString()).length;
   $("event-table").innerHTML = state.events.length ? state.events.map(e => `
     <tr><td>${e.snapshot_url ? `<button class="snapshot-button" onclick="openSnapshot(${e.id})" aria-label="${e.camera_id} 감지 스냅샷 확대"><img src="${e.snapshot_url}" alt="${e.camera_id} 감지 스냅샷"></button>` : '<span class="snapshot-empty">없음</span>'}</td>
-    <td>${new Date(e.detected_at).toLocaleString("ko-KR")}</td><td>${e.camera_id}</td><td>${e.floor} ${e.zone}</td>
+    <td>${new Date(e.detected_at).toLocaleString("ko-KR")}</td><td>${e.camera_id}</td><td>${e.floor} ${e.zone}${hasVehicleData(e) ? `<small class="event-vehicle">🚗 ${vehicleText(e.vehicle_count)}</small>` : ""}</td>
     <td><span class="status ${e.event_type}">${labels[e.event_type]}</span></td><td>${Math.round(e.confidence * 100)}%</td>
     <td>${e.cutoff_status === "simulated_blocked" ? `<span class="cutoff-state blocked">차단 완료 · ${e.cutoff_response_ms}ms<small>SIMULATION</small></span>` : '<span class="cutoff-state idle">해당 없음</span>'}</td>
     <td><span class="notification-state ${e.notification_status || "disabled"}">${notificationLabels[e.notification_status] || "대기"}</span></td>
@@ -176,7 +187,8 @@ function showAlarm(camera, event) {
   $("alarm").classList.remove("hidden");
   $("alarm-title").textContent = event.event_type === "fire" ? "🚨 화재 감지" : "⚠ 연기 감지";
   const cutoff = event.cutoff_status === "simulated_blocked" ? ` · ${event.charger} 가상 긴급 차단 완료 (${event.cutoff_response_ms}ms)` : "";
-  $("alarm-text").textContent = `${camera.floor} ${camera.zone} · ${camera.id} · 신뢰도 ${Math.round(camera.confidence * 100)}%${cutoff}`;
+  const vehicles = hasVehicleData(event) ? ` · 현장 ${vehicleText(event.vehicle_count)}` : "";
+  $("alarm-text").textContent = `${camera.floor} ${camera.zone} · ${camera.id} · 신뢰도 ${Math.round(camera.confidence * 100)}%${vehicles}${cutoff}`;
   beep();
 }
 
@@ -224,7 +236,7 @@ function connectWs() {
   const protocol = location.protocol === "https:" ? "wss" : "ws";
   const ws = new WebSocket(`${protocol}://${location.host}/ws`);
   ws.onopen = () => { $("connection").className = "connection online"; $("connection").innerHTML = "<span></span> 실시간 연결"; ws.send("ready"); };
-  ws.onmessage = async (message) => { const data = JSON.parse(message.data); if (["detection", "resolved", "events-cleared", "edge-status", "notification-updated", "camera-offline", "camera-recovered"].includes(data.kind)) { await load(); if (data.event) showAlarm(data.camera, data.event); if (data.kind === "camera-offline") showCameraOfflineAlarm(data.camera); if (data.kind === "camera-recovered" && !state.cameras.some(camera => camera.status === "fire" || camera.status === "smoke")) $("alarm").classList.add("hidden"); } };
+  ws.onmessage = async (message) => { const data = JSON.parse(message.data); if (["detection", "resolved", "events-cleared", "edge-status", "notification-updated", "camera-offline", "camera-recovered", "vehicle-status"].includes(data.kind)) { await load(); if (data.event) showAlarm(data.camera, data.event); if (data.kind === "camera-offline") showCameraOfflineAlarm(data.camera); if (data.kind === "camera-recovered" && !state.cameras.some(camera => camera.status === "fire" || camera.status === "smoke")) $("alarm").classList.add("hidden"); } };
   ws.onclose = () => { $("connection").className = "connection offline"; $("connection").innerHTML = "<span></span> 재연결 중"; setTimeout(connectWs, 2000); };
 }
 
