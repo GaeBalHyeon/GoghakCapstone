@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0a0a0a">
-  <title>EV Fire Guard</title><link rel="stylesheet" href="/static/style.css?v=20260929-mobile-fix">
+  <title>EV Fire Guard</title><link rel="stylesheet" href="/static/style.css?v=20260929-operations">
 </head>
 <body>
 <div class="app-shell">
@@ -16,7 +16,7 @@
     <div class="sidebar-foot"><span class="environment-dot"></span><div><strong>로컬 환경</strong><small>장비 시뮬레이션</small></div></div>
   </aside>
   <div class="page">
-    <header class="topbar"><div><p class="breadcrumb">전기차 주차장 / 지하 1층</p><h1>안전 관제</h1></div><div id="connection" class="connection offline"><span></span>연결 중</div></header>
+    <header class="topbar"><div><p class="breadcrumb">전기차 주차장 / 지하 1층</p><h1>안전 관제</h1></div><div class="topbar-actions"><button id="open-test-controls" class="test-control-button">감지 테스트</button><div id="connection" class="connection offline"><span></span>연결 중</div></div></header>
     <main>
       <section id="alarm" class="alarm hidden" role="alert"><span class="alarm-symbol">!</span><div><strong id="alarm-title">화재 감지</strong><p id="alarm-text"></p></div><button id="alarm-close" class="quiet-button">경보 닫기</button></section>
       <section id="overview" class="status-strip" aria-label="관제 요약">
@@ -29,17 +29,19 @@
           <div class="surface-head"><div><h3>주차장 배치도</h3><p>충전구역과 카메라 상태</p></div><div class="legend"><span class="normal-key">정상</span><span class="smoke-key">연기</span><span class="fire-key">화재</span></div></div>
           <div class="floor-map" id="floor-map"><div class="map-label">B1 · NORTH</div><div class="lane"><span>차량 통행로</span></div><div class="space a"><strong>충전구역 A</strong><small>A-01 – A-04</small></div><div class="space b"><strong>충전구역 B</strong><small>B-01 – B-04</small></div><div class="space c"><strong>일반 주차구역</strong><small>C-01 – C-08</small></div><div class="space d"><strong>출입구</strong><small>차량 진입 / 진출</small></div></div>
         </article>
-        <aside class="surface control-surface">
-          <div class="surface-head"><div><h3>감지 테스트</h3><p>장비 없이 관제 흐름을 검증합니다.</p></div></div>
-          <div class="field"><label for="camera-select">대상 카메라</label><select id="camera-select"></select></div>
-          <div class="scenario-buttons"><button class="scenario fire-action" data-event="fire"><span>화재</span><small>위험 이벤트 발생</small></button><button class="scenario smoke-action" data-event="smoke"><span>연기</span><small>의심 이벤트 발생</small></button><button class="scenario normal-action" data-event="normal"><span>정상 복귀</span><small>선택 카메라 초기화</small></button></div>
-          <div class="control-divider"></div>
-          <label class="switch-row" for="auto-sim"><span><strong>자동 시뮬레이션</strong><small>설정한 간격으로 이벤트 생성</small></span><input id="auto-sim" type="checkbox"><i></i></label>
-          <div class="field inline-field"><label for="interval">이벤트 간격</label><div><input id="interval" type="number" min="10" max="600" value="45"><span>초</span></div></div>
-          <button id="save-settings" class="primary-button">설정 저장</button>
+        <aside class="surface system-surface">
+          <div class="surface-head"><div><h3>시스템 상태</h3><p>관제 구성요소의 실시간 연결 상태</p></div><span id="system-health-badge" class="system-health-badge">확인 중</span></div>
+          <div class="system-status-list">
+            <div class="system-status-row"><span class="system-status-icon" id="jetson-health-dot"></span><div><strong>Jetson Edge</strong><small id="jetson-health-text">연결 확인 중</small></div><b id="jetson-health-value">—</b></div>
+            <div class="system-status-row"><span class="system-status-icon" id="yolo-health-dot"></span><div><strong>YOLO 추론</strong><small id="yolo-health-text">모델 상태 확인 중</small></div><b id="yolo-health-value">—</b></div>
+            <div class="system-status-row"><span class="system-status-icon" id="telegram-health-dot"></span><div><strong>Telegram</strong><small id="telegram-health-text">외부 경보 확인 중</small></div><b id="telegram-health-value">—</b></div>
+            <div class="system-status-row"><span class="system-status-icon" id="database-health-dot"></span><div><strong>이벤트 DB</strong><small id="database-health-text">저장소 확인 중</small></div><b id="database-health-value">—</b></div>
+          </div>
+          <div class="system-foot"><span>마지막 Jetson 수신</span><strong id="last-frame-time">—</strong></div>
         </aside>
       </section>
       <section id="events" class="content-section surface log-surface"><div class="surface-head"><div><h3>감지 이벤트</h3><p>발생 순서와 관리자 확인 상태</p></div><div class="table-actions"><button id="refresh" class="quiet-button">새로고침</button><button id="delete-events" class="danger-button">기록 삭제</button></div></div><div class="table-wrap"><table><thead><tr><th>스냅샷</th><th>감지 시각</th><th>카메라</th><th>구역</th><th>유형</th><th>신뢰도</th><th>외부 알림</th><th>상태</th><th></th></tr></thead><tbody id="event-table"></tbody></table></div></section>
+      <section id="daily-summary" class="content-section daily-summary"><div class="section-heading compact"><div><p class="overline">TODAY ANALYTICS</p><h2>오늘의 관제 요약</h2></div><p>오늘 발생한 감지와 처리 현황을 실시간 집계합니다.</p></div><div class="daily-stat-grid"><article><span>전체 감지</span><strong id="daily-total">0</strong><small>오늘 누적 이벤트</small></article><article><span>화재 / 연기</span><strong id="daily-types">0 / 0</strong><small>유형별 감지</small></article><article><span>처리 완료</span><strong id="daily-resolved">0</strong><small id="daily-resolved-rate">처리율 0%</small></article><article><span>평균 확인 시간</span><strong id="daily-response">—</strong><small>관리자 확인 기준</small></article></div><div class="analytics-grid"><article class="surface chart-card"><div><h3>카메라별 감지</h3><p>오늘 이벤트 분포</p></div><div id="daily-camera-chart" class="bar-chart"></div></article><article class="surface chart-card"><div><h3>유형별 감지</h3><p>화재와 연기 비교</p></div><div id="daily-type-chart" class="bar-chart"></div></article></div></section>
     </main>
   </div>
 </div>
@@ -48,6 +50,10 @@
   <div id="camera-modal-feed" class="camera-modal-feed"></div>
   <div class="camera-modal-foot"><span id="modal-camera-source"></span><span id="modal-camera-status" class="status normal">정상</span></div>
 </dialog>
-<audio id="alarm-audio" loop></audio><script src="/static/app.js"></script>
+<dialog id="test-control-modal" class="test-control-modal" aria-labelledby="test-control-title">
+  <div class="camera-modal-head"><div><p class="overline">DETECTION CONTROL</p><h2 id="test-control-title">감지 테스트</h2><p>카메라별 경보 흐름과 자동 시뮬레이션을 검증합니다.</p></div><button id="test-control-close" class="modal-close" aria-label="감지 테스트 닫기">×</button></div>
+  <div class="test-control-body"><div class="field"><label for="camera-select">대상 카메라</label><select id="camera-select"></select></div><div class="scenario-buttons"><button class="scenario fire-action" data-event="fire"><span>화재</span><small>위험 이벤트 발생</small></button><button class="scenario smoke-action" data-event="smoke"><span>연기</span><small>의심 이벤트 발생</small></button><button class="scenario normal-action" data-event="normal"><span>정상 복귀</span><small>선택 카메라 초기화</small></button></div><div class="control-divider"></div><label class="switch-row" for="auto-sim"><span><strong>자동 시뮬레이션</strong><small>설정한 간격으로 이벤트 생성</small></span><input id="auto-sim" type="checkbox"><i></i></label><div class="field inline-field"><label for="interval">이벤트 간격</label><div><input id="interval" type="number" min="10" max="600" value="45"><span>초</span></div></div><button id="save-settings" class="primary-button">설정 저장</button></div>
+</dialog>
+<audio id="alarm-audio" loop></audio><script src="/static/app.js?v=20260929-operations"></script>
 </body></html>
 

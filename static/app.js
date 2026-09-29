@@ -1,4 +1,4 @@
-const state = { cameras: [], events: [], settings: { simulation_enabled: false } };
+const state = { cameras: [], events: [], settings: { simulation_enabled: false }, health: {}, notifications: {} };
 const $ = (id) => document.getElementById(id);
 
 const labels = { fire: "화재", smoke: "연기", normal: "정상" };
@@ -40,14 +40,62 @@ function renderCameras() {
       : c.local_video
         ? `<video src="${c.local_video}" autoplay muted loop playsinline preload="auto" aria-label="${c.id} Windows 관제 영상"></video>`
         : '<span class="camera-placeholder" aria-hidden="true"></span>';
-    marker.innerHTML = `<div class="map-camera-feed ${feedClass}">${media}<span class="feed-badge">${c.edge_online ? "JETSON LIVE" : c.local_video ? "LOCAL LIVE" : "OFFLINE"}</span></div><div class="map-camera-meta"><strong>${c.id}</strong><span class="status ${c.status}">${labels[c.status]}</span></div>`;
+    const updated = c.updated_at ? new Date(c.updated_at).toLocaleTimeString("ko-KR", { hour: "2-digit", minute: "2-digit", second: "2-digit" }) : "로컬 재생";
+    const analysis = c.edge_online ? "AI 분석 중" : c.local_video ? "관제 재생" : "연결 대기";
+    const metric = c.edge_online ? `${c.fps.toFixed(1)} FPS` : `${Math.round(c.confidence * 100)}%`;
+    marker.innerHTML = `<div class="map-camera-feed ${feedClass}">${media}<span class="feed-badge">${c.edge_online ? "JETSON LIVE" : c.local_video ? "LOCAL LIVE" : "OFFLINE"}</span><div class="feed-telemetry"><span>${analysis}</span><b>${metric}</b></div></div><div class="map-camera-meta"><div><strong>${c.id} · ${c.zone}</strong><small>${updated} · ${labels[c.status]}</small></div><button class="camera-expand" type="button" aria-label="${c.id} 크게 보기">↗</button></div>`;
     marker.tabIndex = 0;
     marker.setAttribute("role", "button");
     marker.setAttribute("aria-label", `${c.id} ${c.zone} 확대 보기`);
     marker.onclick = () => { $("camera-select").value = c.id; openCameraModal(c); };
+    marker.querySelector(".camera-expand").onclick = event => { event.stopPropagation(); openCameraModal(c); };
     marker.onkeydown = event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); marker.click(); } };
     $("floor-map").appendChild(marker);
   });
+}
+
+function setSystemRow(prefix, online, value, description) {
+  $(`${prefix}-health-dot`).className = `system-status-icon ${online ? "online" : "offline"}`;
+  $(`${prefix}-health-value`).textContent = value;
+  $(`${prefix}-health-text`).textContent = description;
+}
+
+function renderSystemHealth() {
+  const jetson = state.cameras.find(camera => camera.id === "CAM-01");
+  const jetsonOnline = Boolean(jetson?.edge_online);
+  setSystemRow("jetson", jetsonOnline, jetsonOnline ? "ONLINE" : "OFFLINE", jetsonOnline ? "Edge 영상 수신 정상" : "에이전트 연결 대기");
+  setSystemRow("yolo", jetsonOnline && jetson.fps > 0, jetsonOnline ? `${jetson.fps.toFixed(1)} FPS` : "대기", jetsonOnline ? "best.pt 실시간 추론" : "Jetson 연결 필요");
+  setSystemRow("telegram", Boolean(state.notifications.telegram_configured), state.notifications.telegram_configured ? "READY" : "OFF", state.notifications.telegram_configured ? "텍스트 우선 경보 활성" : "알림 설정 필요");
+  const databaseOnline = state.health.status === "ok";
+  setSystemRow("database", databaseOnline, databaseOnline ? String(state.health.database || "DB").toUpperCase() : "ERROR", databaseOnline ? "이벤트 저장소 정상" : "서버 상태 확인 필요");
+  const allHealthy = jetsonOnline && databaseOnline && state.notifications.telegram_configured;
+  $("system-health-badge").className = `system-health-badge ${allHealthy ? "healthy" : "attention"}`;
+  $("system-health-badge").textContent = allHealthy ? "ALL SYSTEMS GO" : "확인 필요";
+  $("last-frame-time").textContent = jetson?.updated_at ? new Date(jetson.updated_at).toLocaleString("ko-KR") : "수신 기록 없음";
+}
+
+function renderDailySummary() {
+  const today = new Date().toDateString();
+  const events = state.events.filter(event => new Date(event.detected_at).toDateString() === today);
+  const fire = events.filter(event => event.event_type === "fire").length;
+  const smoke = events.filter(event => event.event_type === "smoke").length;
+  const resolved = events.filter(event => event.resolved_at);
+  const responseSeconds = resolved.map(event => (new Date(event.resolved_at) - new Date(event.detected_at)) / 1000).filter(value => value >= 0);
+  const average = responseSeconds.length ? responseSeconds.reduce((sum, value) => sum + value, 0) / responseSeconds.length : null;
+  $("daily-total").textContent = events.length;
+  $("daily-types").textContent = `${fire} / ${smoke}`;
+  $("daily-resolved").textContent = resolved.length;
+  $("daily-resolved-rate").textContent = `처리율 ${events.length ? Math.round(resolved.length / events.length * 100) : 0}%`;
+  $("daily-response").textContent = average === null ? "—" : average < 60 ? `${Math.round(average)}초` : `${(average / 60).toFixed(1)}분`;
+
+  const cameraCounts = Object.fromEntries(state.cameras.map(camera => [camera.id, 0]));
+  events.forEach(event => { cameraCounts[event.camera_id] = (cameraCounts[event.camera_id] || 0) + 1; });
+  const renderBars = (target, items) => {
+    const max = Math.max(...items.map(([, value]) => value), 1);
+    $(target).innerHTML = items.map(([label, value]) => `<div class="bar-row"><span>${label}</span><div><i style="width:${value / max * 100}%"></i></div><b>${value}</b></div>`).join("");
+  };
+  renderBars("daily-camera-chart", Object.entries(cameraCounts));
+  renderBars("daily-type-chart", [["화재", fire], ["연기", smoke], ["처리 완료", resolved.length]]);
 }
 
 function openCameraModal(camera) {
@@ -81,6 +129,7 @@ function renderEvents() {
     <td><span class="status ${e.event_type}">${labels[e.event_type]}</span></td><td>${Math.round(e.confidence * 100)}%</td>
     <td><span class="notification-state ${e.notification_status || "disabled"}">${notificationLabels[e.notification_status] || "대기"}</span></td>
     <td>${e.resolved_at ? "확인 완료" : "발생 중"}</td><td>${e.resolved_at ? "" : `<button onclick="resolveEvent(${e.id})">확인·해제</button>`}</td></tr>`).join("") : `<tr><td colspan="9" class="empty">저장된 감지 이벤트가 없습니다.</td></tr>`;
+  renderDailySummary();
 }
 
 function openSnapshot(id) {
@@ -120,11 +169,10 @@ function beep() {
 }
 
 async function load() {
-  [state.cameras, state.events] = await Promise.all([api("/api/cameras"), api("/api/events")]);
-  state.settings = await api("/api/settings");
+  [state.cameras, state.events, state.settings, state.health, state.notifications] = await Promise.all([api("/api/cameras"), api("/api/events"), api("/api/settings"), api("/api/health"), api("/api/notifications/status")]);
   $("auto-sim").checked = state.settings.simulation_enabled; $("interval").value = state.settings.auto_event_interval;
   $("camera-select").innerHTML = state.cameras.map(c => `<option value="${c.id}">${c.id} · ${c.zone}</option>`).join("");
-  renderCameras(); renderEvents(); syncAlarm();
+  renderCameras(); renderEvents(); renderSystemHealth(); syncAlarm();
 }
 
 async function trigger(eventType) {
@@ -158,6 +206,9 @@ $("delete-events").onclick = async () => {
 $("alarm-close").onclick = () => $("alarm").classList.add("hidden");
 $("camera-modal-close").onclick = closeCameraModal;
 $("camera-modal").onclick = event => { if (event.target === $("camera-modal")) closeCameraModal(); };
+$("open-test-controls").onclick = () => $("test-control-modal").showModal();
+$("test-control-close").onclick = () => $("test-control-modal").close();
+$("test-control-modal").onclick = event => { if (event.target === $("test-control-modal")) $("test-control-modal").close(); };
 $("save-settings").onclick = async () => { await api("/api/settings", { method: "PUT", body: JSON.stringify({ simulation_enabled: $("auto-sim").checked, auto_event_interval: Number($("interval").value) }) }); alert("설정을 저장했습니다."); };
 load().then(connectWs).catch(err => { console.error(err); alert("서버 데이터를 불러오지 못했습니다."); });
 
