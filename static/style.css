@@ -54,3 +54,48 @@ body{background:#0a0a0a;color:#fff;font-family:Inter,-apple-system,BlinkMacSyste
 .field label{font-family:Inter,sans-serif;font-size:12px;font-weight:600;letter-spacing:0;text-transform:none}.scenario{border-radius:8px;background:#121212}.scenario span,.switch-row strong{font-family:Inter,sans-serif;font-weight:600;letter-spacing:0;text-transform:none}.scenario:hover{border-color:#faff69;background:#1a1a1a}.switch-row input:checked+i{background:#faff69}.primary-button,.quiet-button,.danger-button,td button{min-height:40px;padding:0 20px;border-radius:8px;font-family:Inter,sans-serif;font-size:14px;font-weight:600;letter-spacing:0;text-transform:none}.primary-button{height:40px;border-color:#faff69;background:#faff69;color:#0a0a0a}.primary-button:hover{border-color:#e6eb52;background:#e6eb52;color:#0a0a0a}.quiet-button,td button{border-color:#3a3a3a;background:#1a1a1a;color:#fff}.quiet-button:hover,td button:hover{border-color:#faff69;background:#242424;color:#faff69}.danger-button{border-color:#3a3a3a;background:#1a1a1a;color:#ef7777}.danger-button:hover{border-color:#ef4444;background:#242424;color:#fff}select,input[type=number]{border-radius:8px;background:#1a1a1a;color:#fff;border-color:#3a3a3a}select:focus,input[type=number]:focus{border-color:#faff69}
 .log-surface{border-radius:12px}th{background:#121212;color:#888;font-family:Inter,sans-serif;font-weight:600;letter-spacing:1px}tbody tr:hover{background:#242424}.snapshot-button{border-radius:6px}.camera-modal{border-color:#2a2a2a;border-radius:12px;background:#0a0a0a}.camera-modal-head h2{font-family:Inter,sans-serif;font-weight:700;letter-spacing:-.3px;text-transform:none}.camera-modal-head,.camera-modal-foot{border-color:#2a2a2a}.modal-close{border-color:#3a3a3a;background:#1a1a1a}.modal-close:hover{border-color:#faff69;background:#242424;color:#faff69}.alarm{border-color:#ef4444;background:#1a1111}.alarm-symbol{background:#ef4444;color:#fff}.alarm p{color:#e6e6e6}
 @media(max-width:960px){.section-heading h2{font-size:30px}}@media(max-width:620px){.section-heading h2{font-size:28px}.primary-button,.quiet-button,.danger-button,td button{min-height:44px}}
+
+/* Final responsive guard: keep app-shell themes from overriding the mobile layout. */
+@media(max-width:900px){
+  :root{--side:0px}
+  html,body{width:100%;max-width:100%;overflow-x:hidden}
+  .sidebar{display:none}
+  .page{width:100%;margin-left:0}
+  .topbar{width:100%;min-height:72px;height:auto;padding:14px 20px}
+  main{width:100%;max-width:none;margin:0;padding:32px 20px 64px}
+  .status-strip{grid-template-columns:1fr;margin-bottom:48px}
+  .status-strip dl{grid-template-columns:repeat(2,minmax(0,1fr));border-top:1px solid var(--soft)}
+  .status-strip dl div{min-width:0;border-left:1px solid var(--soft)}
+  .status-strip dl div:nth-child(odd){border-left:0}
+  .status-strip dl div:nth-child(n+3){border-top:1px solid var(--soft)}
+  .workspace{grid-template-columns:minmax(0,1fr);gap:16px}
+  .map-surface,.control-surface,.log-surface{min-width:0}
+  .section-heading{align-items:flex-start;flex-direction:column;gap:8px}
+  .section-heading>p{max-width:42ch}
+  .table-wrap{width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+}
+@media(max-width:600px){
+  .topbar h1{font-size:21px}
+  .connection{max-width:132px;white-space:normal;text-align:center;line-height:1.25}
+  main{padding:24px 12px 56px}
+  .status-primary{padding:20px 16px}
+  .status-strip dl div{padding:16px}
+  .status-strip dd{font-size:24px}
+  .section-heading h2{font-size:26px;overflow-wrap:anywhere}
+  .surface-head{min-height:72px;padding:14px 16px}
+  .floor-map{height:460px;min-width:0}
+  .floor-map .camera-marker{width:40%}
+  .control-surface>*:not(.surface-head){margin-left:16px;margin-right:16px}
+  .primary-button{width:calc(100% - 32px)}
+  .alarm{grid-template-columns:auto minmax(0,1fr);padding:14px}
+  .alarm button{grid-column:1/-1;width:100%}
+  .camera-modal{width:calc(100vw - 20px)}
+}
+@media(max-width:390px){
+  .topbar{padding:12px}
+  .breadcrumb{max-width:180px;white-space:normal}
+  main{padding-left:8px;padding-right:8px}
+  .floor-map{height:420px}
+  .floor-map .camera-marker{width:42%}
+  .map-camera-meta{padding:0 5px}
+}
