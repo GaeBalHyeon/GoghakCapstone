@@ -32,8 +32,6 @@ function renderCameras() {
   state.cameras.forEach(c => {
     const marker = document.createElement("article");
     marker.className = `camera-marker ${c.status}`;
-    marker.style.setProperty("--camera-x", `${c.x}%`);
-    marker.style.setProperty("--camera-y", `${c.y}%`);
     const feedClass = c.edge_online ? "live" : c.local_video ? "local-live" : "offline";
     const media = c.edge_online
       ? `<img src="/api/video_feed/${c.id}" alt="${c.id} Jetson 실시간 YOLO 영상">`
@@ -49,9 +47,22 @@ function renderCameras() {
     marker.setAttribute("aria-label", `${c.id} ${c.zone} 확대 보기`);
     marker.onclick = () => { $("camera-select").value = c.id; openCameraModal(c); };
     marker.querySelector(".camera-expand").onclick = event => { event.stopPropagation(); openCameraModal(c); };
+    marker.oncontextmenu = event => event.preventDefault();
     marker.onkeydown = event => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); marker.click(); } };
     $("floor-map").appendChild(marker);
+    const localVideo = marker.querySelector("video");
+    if (localVideo) lockVideoPlayback(localVideo);
   });
+}
+
+function lockVideoPlayback(video) {
+  video.controls = false;
+  video.disablePictureInPicture = true;
+  video.setAttribute("controlsList", "nodownload noplaybackrate nofullscreen");
+  video.onpause = () => { if (video.isConnected) video.play().catch(() => {}); };
+  video.onended = () => { video.currentTime = 0; video.play().catch(() => {}); };
+  video.oncontextmenu = event => event.preventDefault();
+  video.play().catch(() => {});
 }
 
 function setSystemRow(prefix, online, value, description) {
@@ -104,7 +115,7 @@ function openCameraModal(camera) {
   const media = camera.edge_online
     ? `<img src="/api/video_feed/${camera.id}" alt="${camera.id} 확대된 Jetson YOLO 영상">`
     : camera.local_video
-      ? `<video src="${camera.local_video}" autoplay muted loop playsinline controls aria-label="${camera.id} 확대된 Windows 관제 영상"></video>`
+      ? `<video src="${camera.local_video}" autoplay muted loop playsinline aria-label="${camera.id} 확대된 Windows 관제 영상"></video>`
       : '<div class="modal-offline"><span></span><strong>카메라 연결 대기</strong></div>';
   $("modal-camera-title").textContent = `${camera.id} · ${camera.zone}`;
   $("modal-camera-description").textContent = `${camera.floor} · ${camera.charger}`;
@@ -112,6 +123,8 @@ function openCameraModal(camera) {
   $("modal-camera-status").className = `status ${camera.status}`;
   $("modal-camera-status").textContent = labels[camera.status];
   $("camera-modal-feed").innerHTML = media;
+  const modalVideo = $("camera-modal-feed").querySelector("video");
+  if (modalVideo) lockVideoPlayback(modalVideo);
   dialog.showModal();
 }
 

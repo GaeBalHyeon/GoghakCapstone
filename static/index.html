@@ -2,7 +2,7 @@
 <html lang="ko">
 <head>
   <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#0a0a0a">
-  <title>EV Fire Guard</title><link rel="stylesheet" href="/static/style.css?v=20260929-operations">
+  <title>EV Fire Guard</title><link rel="stylesheet" href="/static/style.css?v=20260929-camera-wall">
 </head>
 <body>
 <div class="app-shell">
@@ -26,8 +26,8 @@
       <section class="section-heading"><div><p class="overline">LIVE OVERVIEW</p><h2>지하 1층 현황</h2></div><p>카메라 위치를 선택하면 테스트 대상을 변경할 수 있습니다.</p></section>
       <section class="workspace">
         <article class="surface map-surface">
-          <div class="surface-head"><div><h3>주차장 배치도</h3><p>충전구역과 카메라 상태</p></div><div class="legend"><span class="normal-key">정상</span><span class="smoke-key">연기</span><span class="fire-key">화재</span></div></div>
-          <div class="floor-map" id="floor-map"><div class="map-label">B1 · NORTH</div><div class="lane"><span>차량 통행로</span></div><div class="space a"><strong>충전구역 A</strong><small>A-01 – A-04</small></div><div class="space b"><strong>충전구역 B</strong><small>B-01 – B-04</small></div><div class="space c"><strong>일반 주차구역</strong><small>C-01 – C-08</small></div><div class="space d"><strong>출입구</strong><small>차량 진입 / 진출</small></div></div>
+          <div class="surface-head"><div><h3>실시간 카메라</h3><p>Jetson AI 영상과 로컬 관제 영상</p></div><div class="legend"><span class="normal-key">정상</span><span class="smoke-key">연기</span><span class="fire-key">화재</span></div></div>
+          <div class="floor-map camera-wall" id="floor-map"></div>
         </article>
         <aside class="surface system-surface">
           <div class="surface-head"><div><h3>시스템 상태</h3><p>관제 구성요소의 실시간 연결 상태</p></div><span id="system-health-badge" class="system-health-badge">확인 중</span></div>
@@ -54,6 +54,6 @@
   <div class="camera-modal-head"><div><p class="overline">DETECTION CONTROL</p><h2 id="test-control-title">감지 테스트</h2><p>카메라별 경보 흐름과 자동 시뮬레이션을 검증합니다.</p></div><button id="test-control-close" class="modal-close" aria-label="감지 테스트 닫기">×</button></div>
   <div class="test-control-body"><div class="field"><label for="camera-select">대상 카메라</label><select id="camera-select"></select></div><div class="scenario-buttons"><button class="scenario fire-action" data-event="fire"><span>화재</span><small>위험 이벤트 발생</small></button><button class="scenario smoke-action" data-event="smoke"><span>연기</span><small>의심 이벤트 발생</small></button><button class="scenario normal-action" data-event="normal"><span>정상 복귀</span><small>선택 카메라 초기화</small></button></div><div class="control-divider"></div><label class="switch-row" for="auto-sim"><span><strong>자동 시뮬레이션</strong><small>설정한 간격으로 이벤트 생성</small></span><input id="auto-sim" type="checkbox"><i></i></label><div class="field inline-field"><label for="interval">이벤트 간격</label><div><input id="interval" type="number" min="10" max="600" value="45"><span>초</span></div></div><button id="save-settings" class="primary-button">설정 저장</button></div>
 </dialog>
-<audio id="alarm-audio" loop></audio><script src="/static/app.js?v=20260929-operations"></script>
+<audio id="alarm-audio" loop></audio><script src="/static/app.js?v=20260929-camera-wall"></script>
 </body></html>
 
