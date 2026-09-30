@@ -322,6 +322,13 @@ PPT는 기존 건물 안전 관제 시스템을 전기차 주차장에 특화한
 - Jetson `.env`에 `SMOKE_DETECTION=0`을 적용하고 에이전트를 재시작했습니다.
 - Jetson 로그의 `안전 감지 활성 클래스: fire`, Windows CAM-01 온라인과 약 25.8 FPS를 확인했습니다.
 
+## 36. Jetson 자원 사용량과 카메라 확장 분석
+
+- Jetson Orin Nano Super의 `MAXN_SUPER` 모드에서 12초간 `tegrastats`를 측정했습니다.
+- 화재 모델 매 프레임, 차량 모델 3프레임마다 추론하는 CAM-01 구성에서 GPU 평균 약 78%, 순간 최대 98%, 에이전트 CPU 약 95%, 시스템 RAM 약 3.37/7.62GB를 확인했습니다.
+- GPU 온도 약 62.5°C, 입력 전력 평균 약 13.7W, Windows 수신 약 25 FPS로 온도·메모리는 정상이나 GPU가 확장 병목임을 확인했습니다.
+- 현재 설정 그대로는 AI 카메라 1대를 권장하며, 2대 이상은 차량 탐지 축소와 TensorRT 최적화 후 재측정하도록 `JETSON_CAPACITY_REPORT.md`에 정리했습니다.
+
 ## 차량 감지 표시 (2026-09-29)
 
 - 추가 학습 없이 COCO 사전학습 모델 `yolo11n.pt`로 car·truck·bus·motorcycle을 감지합니다. 화재·연기는 기존 `best.pt`를 그대로 씁니다.

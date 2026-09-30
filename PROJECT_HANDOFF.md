@@ -189,6 +189,7 @@ PC·모바일 웹 관제 화면 + Telegram 휴대폰 경보
 - 이 최종 인수인계: `PROJECT_HANDOFF.md`
 - Jetson 세부 인수인계: `JETSON_HANDOFF.md`
 - 모델 검증 결과: `MODEL_EVALUATION.md`
+- Jetson 실측 성능과 카메라 확장 분석: `JETSON_CAPACITY_REPORT.md`
 - 기능 로드맵: `FEATURE_ROADMAP.md`
 - 기존 영상 배포 구조 설명: `run_video\README.md`
 
