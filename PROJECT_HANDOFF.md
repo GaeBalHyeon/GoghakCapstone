@@ -57,8 +57,8 @@ PC·모바일 웹 관제 화면 + Telegram 휴대폰 경보
 |---|---|
 | Windows FastAPI | 정상, `0.0.0.0:8000` |
 | DB | MySQL, `/api/health` 정상 |
-| Jetson CAM-01 | 온라인 |
-| Jetson YOLO | 약 30 FPS 수신 확인 |
+| Jetson CAM-01 | 온라인, 유선 `192.168.0.223:8000` 연결 |
+| Jetson YOLO | 화재 감지만 활성화, 약 25~30 FPS 수신 확인 |
 | Windows 로컬 영상 | CAM-02~04 자동·무음·무한 반복 |
 | Telegram | 설정 및 실제 수신 확인 |
 | 자동 시뮬레이션 | 기본 OFF |
@@ -67,7 +67,7 @@ PC·모바일 웹 관제 화면 + Telegram 휴대폰 경보
 | 가상 충전 차단 | 구현 완료 |
 | GitHub 기준 커밋 | `691af68` 이상 |
 
-IP는 공유기의 DHCP에 따라 변경될 수 있다. Jetson은 현재 Windows 고정 IP 대신 `DESKTOP-TCULRT5.local:8000`으로 연결하게 구성되어 있다.
+현재 Windows는 유선 `192.168.0.223`으로 Jetson 공유기에, Wi-Fi `192.168.29.58`로 인터넷에 연결되어 있다. 다중 네트워크에서 `.local` 이름 해석이 불안정해 Jetson의 `WINDOWS_SERVER`는 `192.168.0.223:8000`으로 설정했다. 유선 공유기가 바뀌면 이 주소를 다시 확인해야 한다.
 
 ## 4. 현재 구현된 기능
 
@@ -86,6 +86,7 @@ IP는 공유기의 DHCP에 따라 변경될 수 있다. Jetson은 현재 Windows
 ### 판정과 경보
 
 - 기본 3초 동안 화재·연기가 유지돼야 확정
+- 현재 시연 Jetson은 `.env`의 `SMOKE_DETECTION=0`으로 연기 감지를 끄고 화재 클래스만 사용
 - 최대 0.6초의 짧은 검출 누락 허용
 - 2초 동안 감지가 사라지면 정상 복귀
 - 화재는 빨간색, 연기는 주황색 테두리
@@ -146,6 +147,7 @@ IP는 공유기의 DHCP에 따라 변경될 수 있다. Jetson은 현재 Windows
 | 일반 서버 실행 | `C:\Users\Ria\Desktop\capstone\re_capstone\run.bat` |
 | Windows 종합 진단 | `C:\Users\Ria\Desktop\capstone\re_capstone\diagnose_windows.bat` |
 | 네트워크 주소 확인 | `C:\Users\Ria\Desktop\capstone\re_capstone\network_check.bat` |
+| 유선 Jetson + Wi-Fi 인터넷 동시 사용 | `C:\Users\Ria\Desktop\capstone\re_capstone\fix_dual_network.bat` |
 | Telegram 최초/재설정 | `C:\Users\Ria\Desktop\capstone\re_capstone\configure_telegram.bat` |
 | GitHub 업로드 | `C:\Users\Ria\Desktop\capstone\re_capstone\push.bat` |
 
@@ -322,15 +324,15 @@ Jetson 전용 CUDA PyTorch를 일반 PyPI CPU 패키지로 덮어쓰면 안 된�
 - GitHub pull/push
 - 최초 패키지 설치
 
-새 시연장에서 공유기가 바뀌면 PC와 Jetson IP가 달라질 수 있다. 현재 Jetson은 mDNS 호스트명으로 Windows를 찾으므로 같은 공유기에 연결되어 있고 Windows 방화벽이 개인 네트워크 TCP 8000을 허용하면 대부분 자동 연결된다.
+새 시연장에서 공유기가 바뀌면 PC와 Jetson IP가 달라질 수 있다. 인터넷 없는 유선 공유기와 인터넷 Wi-Fi를 함께 쓸 때는 관리자 권한으로 `fix_dual_network.bat`을 실행한다. 이 도구는 Wi-Fi 메트릭을 10, 유선 메트릭을 80으로 지정해 인터넷은 Wi-Fi로 보내고 Jetson의 로컬 대역은 유선으로 유지한다.
 
 연결되지 않을 때 확인 순서:
 
 1. Windows BAT에 표시되는 LAN IP 확인
 2. Windows 네트워크 프로필을 `개인`으로 변경
 3. Windows와 Jetson이 같은 IP 대역인지 확인
-4. Jetson에서 `ping DESKTOP-TCULRT5.local`
-5. Jetson에서 `curl http://DESKTOP-TCULRT5.local:8000/api/health`
+4. Jetson `.env`의 `WINDOWS_SERVER`를 Windows 유선 IP로 설정
+5. Jetson에서 `curl http://WINDOWS_유선_IP:8000/api/health`
 6. `.env`의 `EDGE_TOKEN` 일치 확인
 7. `~/evguard/agent.log` 확인
 

@@ -25,6 +25,7 @@ TARGET_FPS = float(os.getenv("TARGET_FPS", "8"))
 CONFIRM_SECONDS = float(os.getenv("CONFIRM_SECONDS", "3.0"))
 MISS_TOLERANCE_SECONDS = float(os.getenv("MISS_TOLERANCE_SECONDS", "0.6"))
 CLEAR_SECONDS = float(os.getenv("CLEAR_SECONDS", "2.0"))
+SMOKE_DETECTION = os.getenv("SMOKE_DETECTION", "1").strip().lower() in ("1", "true", "yes", "on")
 
 # Vehicle detection uses a pretrained COCO model, so no extra training is needed.
 VEHICLE_DETECTION = os.getenv("VEHICLE_DETECTION", "1").strip().lower() in ("1", "true", "yes", "on")
@@ -112,6 +113,15 @@ def draw_vehicles(image, boxes):
 
 def main():
     model = YOLO(MODEL_PATH)
+    enabled_kinds = ("fire", "smoke") if SMOKE_DETECTION else ("fire",)
+    enabled_class_ids = [
+        class_id
+        for class_id, name in model.names.items()
+        if class_kind(str(name)) in enabled_kinds
+    ]
+    if not enabled_class_ids:
+        raise RuntimeError("활성화된 화재·연기 탐지 클래스가 모델에 없습니다.")
+    print(f"안전 감지 활성 클래스: {', '.join(enabled_kinds)}")
     vehicle = load_vehicle_model()
     vehicle_boxes = []
     recent_vehicle_counts = []
@@ -122,9 +132,9 @@ def main():
     if not capture.isOpened():
         raise RuntimeError(f"카메라를 열 수 없습니다: {camera_source()}")
 
-    active = {"fire": False, "smoke": False}
-    candidate_since = {"fire": None, "smoke": None}
-    last_seen = {"fire": None, "smoke": None}
+    active = {kind: False for kind in enabled_kinds}
+    candidate_since = {kind: None for kind in enabled_kinds}
+    last_seen = {kind: None for kind in enabled_kinds}
     pending_events = []
     ws = None
     frame_interval = 1.0 / max(TARGET_FPS, 1)
@@ -142,11 +152,11 @@ def main():
                 time.sleep(0.2)
                 continue
 
-            result = model.predict(frame, conf=CONFIDENCE, verbose=False)[0]
-            seen = {"fire": 0.0, "smoke": 0.0}
+            result = model.predict(frame, conf=CONFIDENCE, classes=enabled_class_ids, verbose=False)[0]
+            seen = {kind: 0.0 for kind in enabled_kinds}
             for box in result.boxes:
                 kind = class_kind(str(model.names[int(box.cls[0])]))
-                if kind:
+                if kind in seen:
                     seen[kind] = max(seen[kind], float(box.conf[0]))
 
             frame_index += 1
@@ -175,7 +185,7 @@ def main():
 
             detection_now = time.perf_counter()
             cleared_detection = False
-            for kind in ("fire", "smoke"):
+            for kind in enabled_kinds:
                 if seen[kind] > 0:
                     last_seen[kind] = detection_now
                     if candidate_since[kind] is None:

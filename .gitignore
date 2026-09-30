@@ -4,6 +4,7 @@ __pycache__/
 data/*.db
 data/*.log
 data/launch_url.txt
+data/network_fix_result.txt
 .env
 .env.backup
 snapshots/

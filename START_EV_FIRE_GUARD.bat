@@ -47,7 +47,7 @@ if not defined DASHBOARD_URL set "DASHBOARD_URL=http://127.0.0.1:8000"
 
 echo.
 echo [READY] Windows server and Telegram configuration loaded.
-echo [READY] Jetson connects using DESKTOP-TCULRT5.local:8000.
+echo [READY] Jetson connects through the wired local network.
 echo [OPEN]  %DASHBOARD_URL%
 echo.
 echo Keep this window open while the system is running.

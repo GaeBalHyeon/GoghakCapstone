@@ -28,6 +28,8 @@ GitHub에 현재 변경 내용을 업로드할 때는 `push.bat`을 실행합니
 
 서버는 `0.0.0.0:8000`에 바인딩되므로 같은 공유기의 Jetson에서도 접속할 수 있습니다. `network_check.bat`으로 Windows 내부 IP를 확인하고, 관리자 CMD에서 `allow_firewall_8000.bat`을 한 번 실행해 개인 네트워크 TCP 8000을 허용합니다.
 
+인터넷이 없는 Jetson 유선 공유기와 인터넷 Wi-Fi를 동시에 사용할 때는 `fix_dual_network.bat`을 한 번 실행합니다. Wi-Fi를 인터넷 기본 경로로 우선하고, 유선의 Jetson 로컬 통신은 그대로 유지합니다. 현재 Jetson은 유선 Windows 주소 `192.168.0.223:8000`으로 연결되어 있습니다.
+
 이 PC에는 MySQL 8.0 서비스가 설치되어 실행 중입니다. `setup.bat` 실행 후 `configure_windows.bat`을 실행하면 MySQL 관리자 비밀번호를 숨김 입력으로 받아 DB, 애플리케이션 계정, 테이블, `.env`와 Edge 토큰을 자동 생성합니다. 기존 `.env`는 `.env.backup`으로 보관됩니다.
 
 ```bat
@@ -50,6 +52,7 @@ run.bat
 - 이벤트 시각, 구역, 충전기, 신뢰도, 해제 상태 기록
 - 감지 순간 스냅샷 저장·확대와 Telegram 휴대폰 경보
 - 3초 연속 감지 후 화재·연기 확정(순간 오탐 억제)
+- Jetson `.env`의 `SMOKE_DETECTION=0`으로 연기 감지 선택적 비활성화
 - MySQL 운영 DB와 SQLite 개발 DB
 - 관리자 확인 및 이벤트 해제
 - 화재 확정 시 관할 충전구역 가상 긴급 차단, 처리시간 기록 및 Telegram 알림
